@@ -25,7 +25,7 @@ namespace MazizTool.Features
         public void Scan()
         {
             Findings.Clear();
-            ScanAutoruns();
+            ScanRunKeys();
             ScanWinlogon();
             ScanIFEO();
             ScanAppInit();
@@ -46,7 +46,7 @@ namespace MazizTool.Features
             OnFinding?.Invoke(f);
         }
 
-        private void ScanAutoruns()
+        private void ScanRunKeys()
         {
             OnProgress?.Invoke("[*] Scanning autorun entries...");
             var runKeys = new[]
