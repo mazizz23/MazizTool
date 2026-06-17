@@ -1,0 +1,24 @@
+# Build output
+publish/
+**/bin/
+**/obj/
+
+# .NET
+*.user
+*.suo
+*.userprefs
+*.cache
+*.pdb
+
+# macOS
+.DS_Store
+._*
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# Keep the EXE out of git (use GitHub Releases for binaries)
+*.exe
