@@ -6,8 +6,8 @@ namespace MazizTool
     {
         public static Color Background = Color.FromArgb(8, 18, 14);
         public static Color Surface = Color.FromArgb(14, 28, 22);
-        public static Color SurfaceLight = Color.FromArgb(20, 40, 32);
-        public static Color SurfaceElevated = Color.FromArgb(26, 52, 42);
+        public static Color SurfaceLight = Color.FromArgb(22, 42, 34);
+        public static Color SurfaceElevated = Color.FromArgb(28, 54, 44);
         public static Color Accent = Color.FromArgb(45, 212, 191);
         public static Color AccentHover = Color.FromArgb(94, 234, 212);
         public static Color AccentDim = Color.FromArgb(20, 184, 166);
@@ -27,7 +27,6 @@ namespace MazizTool
         public static Color BorderLight = Color.FromArgb(48, 78, 72);
         public static Color InputBg = Color.FromArgb(10, 22, 18);
         public static Color Shadow = Color.FromArgb(0, 0, 0, 90);
-        public static Color Ripple = Color.FromArgb(255, 255, 255, 40);
 
         public static Font UIFont = new Font("Segoe UI", 9f, FontStyle.Regular);
         public static Font UIFontBold = new Font("Segoe UI", 9f, FontStyle.Bold);
