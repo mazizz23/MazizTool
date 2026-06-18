@@ -24,7 +24,7 @@ namespace MazizTool.Controls
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
-            BackColor = Color.Transparent;
+            BackColor = Theme.Surface;
             Size = new Size(48, 48);
             _animTimer = new Timer { Interval = 16 };
             _animTimer.Tick += Animate;
@@ -141,7 +141,7 @@ namespace MazizTool.Controls
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
-            BackColor = Color.Transparent;
+            BackColor = Theme.Surface;
             Size = new Size(220, 110);
             _animTimer = new Timer { Interval = 16 };
             _animTimer.Tick += Animate;
