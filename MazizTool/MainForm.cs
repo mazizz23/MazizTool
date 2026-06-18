@@ -31,7 +31,6 @@ namespace MazizTool
         private HijackRemover hijackRemover;
         private System.Windows.Forms.Timer statusTimer;
         private AnimTimer fadeAnim;
-        private AnimTimer openAnim;
         private float contentOpacity = 1f;
         private bool isNavigating;
 
@@ -40,30 +39,33 @@ namespace MazizTool
 
         public MainForm()
         {
-            InitializeForm();
-            SetupHeader();
-            SetupSidebar();
-            SetupContent();
-            scanner = new VirusScanner();
-            scanner.OnProgress += OnScanProgress;
-            scanner.OnThreatFound += OnThreatFound;
-            scanner.OnScanComplete += OnScanComplete;
-            integrityScanner = new SystemFileIntegrity();
-            registryScanner = new RegistryScanner();
-            serviceScanner = new ServiceScanner();
-            fileAnalyzer = new FileAnalyzer();
-            hijackRemover = new HijackRemover();
-            fadeAnim = new AnimTimer();
-            ShowDashboard();
-            statusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
-            statusTimer.Tick += (s, e) => UpdateStatusBar();
-            statusTimer.Start();
-            Opacity = 0;
-            openAnim = new AnimTimer();
-            openAnim.Start(400, t => { Opacity = Anim.Lerp(0f, 1f, Anim.EaseOut(t)); }, () => { Opacity = 1; openAnim = null; });
-            var safety = new System.Windows.Forms.Timer { Interval = 2000 };
-            safety.Tick += (s, e) => { if (Opacity < 1f) Opacity = 1f; safety.Stop(); safety.Dispose(); };
-            safety.Start();
+            try
+            {
+                InitializeForm();
+                SetupHeader();
+                SetupSidebar();
+                SetupContent();
+                scanner = new VirusScanner();
+                scanner.OnProgress += OnScanProgress;
+                scanner.OnThreatFound += OnThreatFound;
+                scanner.OnScanComplete += OnScanComplete;
+                integrityScanner = new SystemFileIntegrity();
+                registryScanner = new RegistryScanner();
+                serviceScanner = new ServiceScanner();
+                fileAnalyzer = new FileAnalyzer();
+                hijackRemover = new HijackRemover();
+                fadeAnim = new AnimTimer();
+                ShowDashboard();
+                statusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+                statusTimer.Tick += (s, e) => UpdateStatusBar();
+                statusTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Constructor error:\n\n" + ex.Message + "\n\n" + ex.StackTrace,
+                    "MazizTool Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw;
+            }
         }
 
         private void InitializeForm()
@@ -264,27 +266,18 @@ namespace MazizTool
 
             if (navButtons.TryGetValue(feature, out var nb)) { nb.SetActive(true); activeNav = nb; }
 
-            fadeAnim.Stop();
-            fadeAnim.Start(120, t =>
-            {
-                contentOpacity = 1f - Anim.EaseOut(t);
-                contentPanel.Visible = contentOpacity > 0.01f;
-            }, () =>
+            try
             {
                 currentFeaturePanel?.Dispose();
                 currentFeaturePanel = null;
                 contentPanel.Controls.Clear();
                 BuildFeature(feature);
-                fadeAnim.Start(180, t =>
-                {
-                    contentOpacity = Anim.EaseOutBack(t);
-                    contentPanel.Visible = true;
-                }, () =>
-                {
-                    contentOpacity = 1f;
-                    isNavigating = false;
-                });
-            });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Navigate error: " + ex.Message, "MazizTool");
+            }
+            isNavigating = false;
             StatusText = feature;
         }
 
