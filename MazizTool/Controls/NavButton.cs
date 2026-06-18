@@ -22,7 +22,7 @@ namespace MazizTool.Controls
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.Opaque, true);
+                     ControlStyles.SupportsTransparentBackColor | ControlStyles.Opaque, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
             BackColor = Color.Transparent;
@@ -138,7 +138,7 @@ namespace MazizTool.Controls
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.Opaque, true);
+                     ControlStyles.SupportsTransparentBackColor | ControlStyles.Opaque, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
             BackColor = Color.Transparent;

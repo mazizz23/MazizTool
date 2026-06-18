@@ -99,7 +99,7 @@ namespace MazizTool
             {
                 Height = TopBarHeight,
                 Dock = DockStyle.Top,
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             topBar.Paint += (s, e) =>
             {
@@ -125,7 +125,7 @@ namespace MazizTool
                 AutoSize = true,
                 Location = new Point(SidebarWidth + 64, 10),
                 Name = "moduleTitle",
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             moduleSubLabel = new Label
             {
@@ -135,7 +135,7 @@ namespace MazizTool
                 AutoSize = true,
                 Location = new Point(SidebarWidth + 64, 33),
                 Name = "moduleSub",
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
 
             var themeBtn = new Panel
@@ -144,7 +144,7 @@ namespace MazizTool
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Location = new Point(topBar.Width - 56, 12),
                 Cursor = Cursors.Hand,
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             themeBtn.Paint += (s, e) =>
             {
@@ -222,7 +222,7 @@ namespace MazizTool
                     Size = new Size(104, 44),
                     Location = new Point(12 + col * 112, 40 + row * 50),
                     Cursor = Cursors.Hand,
-                    BackColor = Color.Transparent
+                    BackColor = Theme.Surface
                 };
                 item.Paint += (s, e) =>
                 {
@@ -263,7 +263,7 @@ namespace MazizTool
             {
                 Width = SidebarWidth,
                 Dock = DockStyle.Left,
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             iconSidebar.Paint += (s, e) =>
             {
@@ -275,7 +275,7 @@ namespace MazizTool
             {
                 Size = new Size(48, 48),
                 Location = new Point(8, 8),
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             logoBtn.Paint += (s, e) =>
             {
@@ -334,7 +334,7 @@ namespace MazizTool
             contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.Transparent,
+                BackColor = Theme.Surface,
                 Padding = new Padding(24)
             };
             Controls.Add(contentPanel);
@@ -348,7 +348,7 @@ namespace MazizTool
             {
                 Height = BottomBarHeight,
                 Dock = DockStyle.Bottom,
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             bottomBar.Paint += (s, e) =>
             {
@@ -453,7 +453,7 @@ namespace MazizTool
 
         private Panel NewView()
         {
-            var p = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, AutoScroll = true, Padding = new Padding(8) };
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Surface, AutoScroll = true, Padding = new Padding(8) };
             currentView = p;
             return p;
         }
