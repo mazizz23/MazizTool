@@ -24,7 +24,8 @@ namespace MazizTool.Controls
         public NavButton()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
-                     ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor | ControlStyles.Opaque, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
             BackColor = Color.Transparent;

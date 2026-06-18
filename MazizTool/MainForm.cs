@@ -148,7 +148,7 @@ namespace MazizTool
             {
                 Height = 60,
                 Dock = DockStyle.Top,
-                BackColor = Color.Transparent
+                BackColor = Theme.Surface
             };
             logoPanel.Paint += (s, e) =>
             {
