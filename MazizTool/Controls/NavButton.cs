@@ -21,8 +21,7 @@ namespace MazizTool.Controls
         public IconButton()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
-                     ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.SupportsTransparentBackColor | ControlStyles.Opaque, true);
+                     ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
             BackColor = Color.Transparent;
@@ -76,6 +75,8 @@ namespace MazizTool.Controls
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            g.Clear(Theme.Surface);
 
             int size = Math.Min(Width, Height) - 8;
             int x = (Width - size) / 2;
@@ -137,8 +138,7 @@ namespace MazizTool.Controls
         public ModuleCard()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
-                     ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.SupportsTransparentBackColor | ControlStyles.Opaque, true);
+                     ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
             Cursor = Cursors.Hand;
             Font = new Font("Segoe UI", 9f);
             BackColor = Color.Transparent;
@@ -175,6 +175,8 @@ namespace MazizTool.Controls
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            g.Clear(Theme.Surface);
 
             int lift = (int)(_hoverT * 2);
             var rect = new Rectangle(0, -lift, Width - 1, Height - 1 + lift);

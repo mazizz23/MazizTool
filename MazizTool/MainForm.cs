@@ -334,7 +334,7 @@ namespace MazizTool
             contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Theme.Surface,
+                BackColor = Theme.Background,
                 Padding = new Padding(24)
             };
             Controls.Add(contentPanel);
@@ -453,7 +453,7 @@ namespace MazizTool
 
         private Panel NewView()
         {
-            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Surface, AutoScroll = true, Padding = new Padding(8) };
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, AutoScroll = true, Padding = new Padding(8) };
             currentView = p;
             return p;
         }
