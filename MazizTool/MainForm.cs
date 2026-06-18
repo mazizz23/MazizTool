@@ -32,6 +32,7 @@ namespace MazizTool
         private System.Windows.Forms.Timer statusTimer;
         private AnimTimer fadeAnim;
         private float contentOpacity = 1f;
+        private bool isNavigating;
 
         private const int SidebarWidth = 210;
         private const int HeaderHeight = 56;
@@ -247,40 +248,45 @@ namespace MazizTool
 
         private void NavigateTo(string feature)
         {
-            if (activeNav != null) activeNav.SetActive(false);
-            if (navButtons.TryGetValue(feature, out var nb)) { nb.SetActive(true); activeNav = nb; }
+            if (isNavigating) return;
+            if (activeNav != null && navButtons.TryGetValue(feature, out var existing) && existing == activeNav) return;
 
             if (feature == "Explorer") { LaunchExplorer(); return; }
             if (feature == "CMD") { LaunchCmd(); return; }
             if (feature == "PowerShell") { LaunchPowerShell(); return; }
 
-            fadeAnim.Start(150, t =>
+            isNavigating = true;
+            DeactivateAllNav();
+
+            if (navButtons.TryGetValue(feature, out var nb)) { nb.SetActive(true); activeNav = nb; }
+
+            fadeAnim.Stop();
+            fadeAnim.Start(120, t =>
             {
-                contentOpacity = 1f - t;
+                contentOpacity = 1f - Anim.EaseOut(t);
                 contentPanel.Visible = contentOpacity > 0.01f;
-                ApplyContentOpacity();
             }, () =>
             {
                 currentFeaturePanel?.Dispose();
                 currentFeaturePanel = null;
+                contentPanel.Controls.Clear();
                 BuildFeature(feature);
-                fadeAnim.Start(200, t =>
+                fadeAnim.Start(180, t =>
                 {
-                    contentOpacity = t;
-                    ApplyContentOpacity();
+                    contentOpacity = Anim.EaseOutBack(t);
                     contentPanel.Visible = true;
-                }, () => { contentOpacity = 1f; ApplyContentOpacity(); });
+                }, () =>
+                {
+                    contentOpacity = 1f;
+                    isNavigating = false;
+                });
             });
             StatusText = feature;
         }
 
-        private void ApplyContentOpacity()
+        private void DeactivateAllNav()
         {
-            contentPanel.BackColor = Color.FromArgb(
-                (int)(255 * contentOpacity),
-                Theme.Background.R, Theme.Background.G, Theme.Background.B);
-            foreach (Control c in contentPanel.Controls)
-                c.Visible = contentOpacity > 0.05f;
+            if (activeNav != null) { activeNav.SetActive(false); activeNav = null; }
         }
 
         private string StatusText
