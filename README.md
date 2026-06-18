@@ -43,3 +43,4 @@ Grab the latest EXE from [Releases](../../releases/latest).
 - C# / .NET 8 / Windows Forms
 - Single-file self-contained deployment (win-x64)
 - Dark green/black hacker console aesthetic
+
