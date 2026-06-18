@@ -215,9 +215,9 @@ namespace MazizTool
                 Font = new Font("Segoe UI", 10f),
                 BackColor = Theme.InputBg,
                 ForeColor = Theme.TextPrimary,
-                BorderStyle = BorderStyle.FixedSingle,
-                Size = new Size(280, 32),
-                Location = new Point(headerPanel.Width - 320, 19),
+                BorderStyle = BorderStyle.None,
+                Size = new Size(280, 34),
+                Location = new Point(headerPanel.Width - 320, 18),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 PlaceholderText = "Search modules..."
             };
@@ -257,7 +257,7 @@ namespace MazizTool
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Theme.Border, 1))
                     g.DrawLine(pen, 0, 0, bottomBar.Width, 0);
-                TextRenderer.DrawText(g, "MazizTool v6.0", new Font("Segoe UI", 8f),
+                TextRenderer.DrawText(g, "MazizTool v6.5", new Font("Segoe UI", 8f),
                     new Rectangle(16, 6, 200, 16), Theme.TextMuted, TextFormatFlags.Left);
                 var dotRect = new Rectangle(232, 9, 6, 6);
                 using (var path = GraphicsExt.RoundedRect(dotRect, 3))
@@ -323,8 +323,8 @@ namespace MazizTool
                     Title = mod.Title,
                     Subtitle = mod.Subtitle,
                     IconBg = mod.Color,
-                    Size = new Size(272, 140),
-                    Margin = new Padding(8, 8, 8, 8),
+                    Size = new Size(284, 144),
+                    Margin = new Padding(10, 10, 10, 10),
                     Tag = mod.Tag,
                     Visible = false
                 };
@@ -1316,7 +1316,7 @@ namespace MazizTool
                 dlg.Controls.Add(logo);
                 var info = new Label
                 {
-                    Text = "MazizTool v6.0\nSystem Recovery & Anti-Malware Hub",
+                    Text = "MazizTool v6.5\nSystem Recovery & Anti-Malware Hub",
                     Font = new Font("Segoe UI", 11f, FontStyle.Bold),
                     ForeColor = Theme.TextPrimary, Dock = DockStyle.Top, Height = 50,
                     TextAlign = ContentAlignment.MiddleCenter, BackColor = Theme.Surface
