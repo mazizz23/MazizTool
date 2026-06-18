@@ -347,5 +347,111 @@ namespace MazizTool.Features
 
             return info.ToString();
         }
+
+        public static bool RebuildIconCache()
+        {
+            try
+            {
+                var cachePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\Windows\Explorer");
+                if (Directory.Exists(cachePath))
+                {
+                    foreach (var f in Directory.GetFiles(cachePath, "iconcache*"))
+                        try { File.Delete(f); } catch { }
+                    foreach (var f in Directory.GetFiles(cachePath, "thumbcache*"))
+                        try { File.Delete(f); } catch { }
+                }
+                Process.Start(new ProcessStartInfo { FileName = "cmd.exe", Arguments = "/c ie4uinit.exe -show", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(3000);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool RepairWMI()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = "winmgmt.exe", Arguments = "/salvagerepository", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(10000);
+                Process.Start(new ProcessStartInfo { FileName = "winmgmt.exe", Arguments = "/resetrepository", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(10000);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool ResetFirewall()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = "netsh.exe", Arguments = "advfirewall reset", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(5000);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool FixCOMRegistration()
+        {
+            try
+            {
+                var cmds = new[] { "regsvr32 /s shell32.dll", "regsvr32 /s ole32.dll", "regsvr32 /s actxprxy.dll" };
+                foreach (var c in cmds)
+                    Process.Start(new ProcessStartInfo { FileName = "cmd.exe", Arguments = $"/c {c}", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(5000);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool RebuildFontCache()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo { FileName = "net.exe", Arguments = "stop FontCache", UseShellExecute = false, CreateNoWindow = true };
+                Process.Start(psi)?.WaitForExit(5000);
+                var cacheFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"FontCache-S-1-5-21.dat");
+                try { File.Delete(cacheFile); } catch { }
+                psi = new ProcessStartInfo { FileName = "net.exe", Arguments = "start FontCache", UseShellExecute = false, CreateNoWindow = true };
+                Process.Start(psi)?.WaitForExit(5000);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool FixPrintSpooler()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = "net.exe", Arguments = "stop spooler", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(5000);
+                var spoolDir = Path.Combine(Environment.SystemDirectory, @"spool\PRINTERS");
+                if (Directory.Exists(spoolDir))
+                    foreach (var f in Directory.GetFiles(spoolDir)) try { File.Delete(f); } catch { }
+                Process.Start(new ProcessStartInfo { FileName = "net.exe", Arguments = "start spooler", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(5000);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool FixTaskManager()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo { FileName = "reg.exe", Arguments = @"add HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 0 /f", UseShellExecute = false, CreateNoWindow = true };
+                Process.Start(psi)?.WaitForExit(3000);
+                psi = new ProcessStartInfo { FileName = "reg.exe", Arguments = @"add HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System /v DisableTaskMgr /t REG_DWORD /d 0 /f", UseShellExecute = false, CreateNoWindow = true };
+                Process.Start(psi)?.WaitForExit(3000);
+                Win32.SystemParametersInfo(Win32.SPI_SETDISABLETASKMGR, 0, IntPtr.Zero, Win32.SPIF_UPDATEINIFILE | Win32.SPIF_SENDCHANGE);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public static bool RestoreExplorer()
+        {
+            try
+            {
+                foreach (var p in Process.GetProcessesByName("explorer")) try { p.Kill(); } catch { }
+                System.Threading.Thread.Sleep(1000);
+                Process.Start("explorer.exe");
+                return true;
+            }
+            catch { return false; }
+        }
     }
 }

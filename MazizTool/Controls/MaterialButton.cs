@@ -138,8 +138,14 @@ namespace MazizTool.Controls
 
         private Color CalcTextColor(Color bg)
         {
-            double brightness = (bg.R * 0.299 + bg.G * 0.587 + bg.B * 0.114) / 255.0;
-            return brightness > 0.55 ? Color.FromArgb(10, 14, 16) : Color.White;
+            double r = bg.R / 255.0;
+            double g = bg.G / 255.0;
+            double b = bg.B / 255.0;
+            r = r <= 0.03928 ? r / 12.92 : Math.Pow((r + 0.055) / 1.055, 2.4);
+            g = g <= 0.03928 ? g / 12.92 : Math.Pow((g + 0.055) / 1.055, 2.4);
+            b = b <= 0.03928 ? b / 12.92 : Math.Pow((b + 0.055) / 1.055, 2.4);
+            double lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            return lum > 0.45 ? Color.FromArgb(8, 12, 16) : Color.White;
         }
 
         protected override void Dispose(bool disposing)

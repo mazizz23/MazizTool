@@ -16,48 +16,70 @@ namespace MazizTool
 {
     public partial class MainForm : Form
     {
-        private Panel topBar;
-        private Panel iconSidebar;
+        private Panel headerPanel;
         private Panel contentPanel;
         private Panel bottomBar;
         private Panel currentView;
-        private Dictionary<string, IconButton> iconButtons = new Dictionary<string, IconButton>();
-        private IconButton activeIcon;
-        private Label moduleTitleLabel;
-        private Label moduleSubLabel;
-        private VirusScanner scanner;
+        private Panel logoPanel;
+        private Label headerTitle;
+        private Label headerSub;
+        private Button backButton;
+        private TextBox searchBox;
         private SystemFileIntegrity integrityScanner;
         private RegistryScanner registryScanner;
         private ServiceScanner serviceScanner;
         private FileAnalyzer fileAnalyzer;
         private HijackRemover hijackRemover;
         private System.Windows.Forms.Timer statusTimer;
-        private Form colorPopover;
+        private bool isHome = true;
 
-        private const int TopBarHeight = 56;
-        private const int SidebarWidth = 64;
-        private const int BottomBarHeight = 26;
+        private const int HeaderHeight = 70;
+        private const int BottomBarHeight = 28;
+
+        private struct ModuleDef
+        {
+            public string Tag, Icon, Title, Subtitle, Category;
+            public Color Color;
+        }
+
+        private ModuleDef[] modules = new ModuleDef[]
+        {
+            new ModuleDef { Tag="Sys File Integrity", Icon="◆", Title="Repair Files", Subtitle="SFC / DISM / system file verification", Category="RECOVERY", Color=Color.FromArgb(45,212,191) },
+            new ModuleDef { Tag="Registry Scan", Icon="ƒ", Title="Scan Registry", Subtitle="Full registry persistence & hijack scan", Category="RECOVERY", Color=Color.FromArgb(16,185,129) },
+            new ModuleDef { Tag="Service Scan", Icon="⚙", Title="Scan Services", Subtitle="Detect suspicious Windows services", Category="RECOVERY", Color=Color.FromArgb(6,182,212) },
+            new ModuleDef { Tag="Hijack Remover", Icon="⬚", Title="Fix Hijacks", Subtitle="Browser / DNS / proxy / Winsock / WMI", Category="RECOVERY", Color=Color.FromArgb(245,158,11) },
+            new ModuleDef { Tag="Task Manager", Icon="▤", Title="Tasks", Subtitle="View & manage running processes", Category="MALWARE", Color=Color.FromArgb(45,212,191) },
+            new ModuleDef { Tag="Process Killer", Icon="✖", Title="Kill Process", Subtitle="Force-kill protected / malicious processes", Category="MALWARE", Color=Color.FromArgb(244,63,94) },
+            new ModuleDef { Tag="Startup Manager", Icon="↻", Title="Startup", Subtitle="Remove auto-start entries & tasks", Category="MALWARE", Color=Color.FromArgb(245,158,11) },
+            new ModuleDef { Tag="File Analyzer", Icon="⌬", Title="Analyze File", Subtitle="PE header / hash / signature / API scan", Category="MALWARE", Color=Color.FromArgb(6,182,212) },
+            new ModuleDef { Tag="Hotkey Fix", Icon="⌨", Title="Fix Hotkeys", Subtitle="Unblock Alt+Tab / Ctrl+Alt+Del / TaskMgr", Category="UNLOCK", Color=Color.FromArgb(16,185,129) },
+            new ModuleDef { Tag="Font Protect", Icon="Aa", Title="Fix Fonts", Subtitle="Restore system fonts if tampered by malware", Category="UNLOCK", Color=Color.FromArgb(45,212,191) },
+            new ModuleDef { Tag="UAC Bypass", Icon="🔓", Title="Elevate", Subtitle="5 UAC bypass methods + privilege escalation", Category="UNLOCK", Color=Color.FromArgb(245,158,11) },
+            new ModuleDef { Tag="Registry Editor", Icon="📝", Title="Registry", Subtitle="Quick registry navigation & policy repair", Category="UNLOCK", Color=Color.FromArgb(6,182,212) },
+            new ModuleDef { Tag="Hosts Editor", Icon="🌐", Title="Hosts File", Subtitle="Edit / reset Windows hosts file + flush DNS", Category="TOOLS", Color=Color.FromArgb(45,212,191) },
+            new ModuleDef { Tag="System Tools", Icon="🔧", Title="Tools", Subtitle="16 repair utilities: icon cache, WMI, firewall...", Category="TOOLS", Color=Color.FromArgb(16,185,129) },
+            new ModuleDef { Tag="File Browser", Icon="📁", Title="Files", Subtitle="Browse / search / manage files & folders", Category="TOOLS", Color=Color.FromArgb(6,182,212) },
+            new ModuleDef { Tag="Explorer", Icon="▢", Title="Explorer", Subtitle="Launch Windows Explorer", Category="LAUNCH", Color=Color.FromArgb(45,212,191) },
+            new ModuleDef { Tag="CMD", Icon="›_", Title="CMD", Subtitle="Launch Command Prompt as admin", Category="LAUNCH", Color=Color.FromArgb(245,158,11) },
+            new ModuleDef { Tag="PowerShell", Icon="PS", Title="PowerShell", Subtitle="Launch PowerShell as admin", Category="LAUNCH", Color=Color.FromArgb(6,182,212) },
+            new ModuleDef { Tag="About", Icon="ℹ", Title="About", Subtitle="Version info & credits", Category="INFO", Color=Color.FromArgb(100,116,130) },
+        };
 
         public MainForm()
         {
             try
             {
                 InitializeForm();
-                SetupTopBar();
-                SetupIconSidebar();
+                SetupHeader();
                 SetupContent();
                 SetupBottomBar();
-                scanner = new VirusScanner();
-                scanner.OnProgress += OnScanProgress;
-                scanner.OnThreatFound += OnThreatFound;
-                scanner.OnScanComplete += OnScanComplete;
                 integrityScanner = new SystemFileIntegrity();
                 registryScanner = new RegistryScanner();
                 serviceScanner = new ServiceScanner();
                 fileAnalyzer = new FileAnalyzer();
                 hijackRemover = new HijackRemover();
-                ShowDashboard();
-                statusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+                ShowHome();
+                statusTimer = new System.Windows.Forms.Timer { Interval = 2000 };
                 statusTimer.Tick += (s, e) => UpdateStatusBar();
                 statusTimer.Start();
             }
@@ -72,8 +94,8 @@ namespace MazizTool
         private void InitializeForm()
         {
             Text = "MazizTool";
-            Size = new Size(1340, 840);
-            MinimumSize = new Size(1020, 640);
+            Size = new Size(1280, 760);
+            MinimumSize = new Size(960, 600);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Theme.Background;
             ForeColor = Theme.TextPrimary;
@@ -81,6 +103,7 @@ namespace MazizTool
             FormBorderStyle = FormBorderStyle.Sizable;
             DoubleBuffered = true;
             SetDarkTitleBar();
+            SetAppIcon();
         }
 
         private void SetDarkTitleBar()
@@ -88,245 +111,123 @@ namespace MazizTool
             try { int d = 1; Win32.DwmSetWindowAttribute(Handle, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref d, 4); } catch { }
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        private void SetAppIcon()
         {
-            GraphicsExt.DrawGradientBg(e.Graphics, ClientRectangle, Theme.BackgroundTop, Theme.Background);
+            try
+            {
+                var bmp = new Bitmap(32, 32);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.Clear(Color.FromArgb(8, 12, 16));
+                    var rect = new Rectangle(2, 2, 28, 28);
+                    var path = GraphicsExt.RoundedRect(rect, 7);
+                    using (var brush = new LinearGradientBrush(rect, Theme.Accent, Theme.AccentDark, 90f))
+                        g.FillPath(brush, path);
+                    TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 10f, FontStyle.Bold), rect,
+                        Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    path.Dispose();
+                }
+                Icon = Icon.FromHandle(bmp.GetHicon());
+                bmp.Dispose();
+            }
+            catch { }
         }
 
-        private void SetupTopBar()
+        private void SetupHeader()
         {
-            topBar = new Panel
+            headerPanel = new Panel
             {
-                Height = TopBarHeight,
+                Height = HeaderHeight,
                 Dock = DockStyle.Top,
                 BackColor = Theme.Surface
             };
-            topBar.Paint += (s, e) =>
+            headerPanel.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Theme.Border, 1))
-                    g.DrawLine(pen, 0, TopBarHeight - 1, topBar.Width, TopBarHeight - 1);
-
-                var logoRect = new Rectangle(SidebarWidth + 20, 12, 32, 32);
-                var logoPath = GraphicsExt.RoundedRect(logoRect, 9);
-                using (var brush = new LinearGradientBrush(logoRect, Theme.Accent, Theme.AccentDark, 90f))
-                    g.FillPath(brush, logoPath);
-                logoPath.Dispose();
-                TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 11f, FontStyle.Bold), logoRect,
-                    Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    g.DrawLine(pen, 0, HeaderHeight - 1, headerPanel.Width, HeaderHeight - 1);
             };
 
-            moduleTitleLabel = new Label
+            logoPanel = new Panel
             {
-                Text = "Dashboard",
-                Font = new Font("Segoe UI", 15f, FontStyle.Bold),
-                ForeColor = Theme.TextPrimary,
-                AutoSize = true,
-                Location = new Point(SidebarWidth + 64, 10),
-                Name = "moduleTitle",
+                Size = new Size(44, 44),
+                Location = new Point(20, 13),
                 BackColor = Theme.Surface
             };
-            moduleSubLabel = new Label
-            {
-                Text = "system overview",
-                Font = new Font("Segoe UI", 8.5f),
-                ForeColor = Theme.TextMuted,
-                AutoSize = true,
-                Location = new Point(SidebarWidth + 64, 33),
-                Name = "moduleSub",
-                BackColor = Theme.Surface
-            };
-
-            var themeBtn = new Panel
-            {
-                Size = new Size(40, 32),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(topBar.Width - 56, 12),
-                Cursor = Cursors.Hand,
-                BackColor = Theme.Surface
-            };
-            themeBtn.Paint += (s, e) =>
+            logoPanel.Paint += (s, e) =>
             {
                 var g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                var swatchRect = new Rectangle(8, 8, 24, 16);
-                var swatchPath = GraphicsExt.RoundedRect(swatchRect, 4);
-                using (var brush = new LinearGradientBrush(swatchRect, Theme.Accent, Theme.AccentDark, 0f))
-                    g.FillPath(brush, swatchPath);
-                using (var pen = new Pen(Theme.BorderLight, 1))
-                    g.DrawPath(pen, swatchPath);
-                swatchPath.Dispose();
-                TextRenderer.DrawText(g, "▾", new Font("Segoe UI", 8f),
-                    new Rectangle(28, 0, 12, 32), Theme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            };
-            themeBtn.Click += (s, e) => ToggleThemePopover(themeBtn);
-            themeBtn.Name = "themeBtn";
-            topBar.Resize += (s, e) => { themeBtn.Location = new Point(topBar.Width - 56, 12); };
-
-            topBar.Controls.Add(moduleTitleLabel);
-            topBar.Controls.Add(moduleSubLabel);
-            topBar.Controls.Add(themeBtn);
-            Controls.Add(topBar);
-        }
-
-        private void ToggleThemePopover(Control anchor)
-        {
-            if (colorPopover != null && !colorPopover.IsDisposed)
-            {
-                colorPopover.Close();
-                colorPopover = null;
-                return;
-            }
-
-            var pop = new Form
-            {
-                FormBorderStyle = FormBorderStyle.None,
-                StartPosition = FormStartPosition.Manual,
-                ShowInTaskbar = false,
-                BackColor = Theme.SurfaceElevated,
-                Size = new Size(240, 300),
-                Location = anchor.PointToScreen(new Point(-200, 36))
-            };
-            try { int d = 1; Win32.DwmSetWindowAttribute(pop.Handle, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref d, 4); } catch { }
-            pop.Paint += (s, e) =>
-            {
-                var g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                var rect = new Rectangle(0, 0, pop.Width - 1, pop.Height - 1);
-                var path = GraphicsExt.RoundedRect(rect, 12);
-                using (var brush = new SolidBrush(Theme.SurfaceElevated))
-                    g.FillPath(brush, path);
-                using (var pen = new Pen(Theme.BorderLight, 1))
-                    g.DrawPath(pen, path);
-                path.Dispose();
-            };
-
-            var title = new Label
-            {
-                Text = "Accent color",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = Theme.TextMuted,
-                AutoSize = true,
-                Location = new Point(16, 14)
-            };
-            pop.Controls.Add(title);
-
-            for (int i = 0; i < Theme.Presets.Count; i++)
-            {
-                var preset = Theme.Presets[i];
-                var idx = i;
-                int row = i / 2, col = i % 2;
-                var item = new Panel
-                {
-                    Size = new Size(104, 44),
-                    Location = new Point(12 + col * 112, 40 + row * 50),
-                    Cursor = Cursors.Hand,
-                    BackColor = Theme.Surface
-                };
-                item.Paint += (s, e) =>
-                {
-                    var g = e.Graphics;
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    var swatchRect = new Rectangle(6, 12, 20, 20);
-                    using (var path = GraphicsExt.RoundedRect(swatchRect, 6))
-                    using (var brush = new SolidBrush(preset.Accent))
-                        g.FillPath(brush, path);
-                    if (Theme.CurrentPresetIndex == idx)
-                    {
-                        using (var pen = new Pen(Color.White, 2))
-                        using (var path2 = GraphicsExt.RoundedRect(Rectangle.Inflate(swatchRect, 1, 1), 7))
-                            g.DrawPath(pen, path2);
-                    }
-                    TextRenderer.DrawText(g, preset.Name, new Font("Segoe UI", 8.5f),
-                        new Rectangle(32, 0, 68, 44), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-                };
-                item.Click += (s, e) =>
-                {
-                    Theme.ApplyPreset(idx);
-                    pop.Close();
-                    colorPopover = null;
-                    Invalidate(true);
-                    foreach (Control c in Controls) c.Invalidate(true);
-                };
-                pop.Controls.Add(item);
-            }
-
-            colorPopover = pop;
-            pop.Deactivate += (s, e) => { pop.Close(); colorPopover = null; };
-            pop.Show(this);
-        }
-
-        private void SetupIconSidebar()
-        {
-            iconSidebar = new Panel
-            {
-                Width = SidebarWidth,
-                Dock = DockStyle.Left,
-                BackColor = Theme.Surface
-            };
-            iconSidebar.Paint += (s, e) =>
-            {
-                using (var pen = new Pen(Theme.Border, 1))
-                    e.Graphics.DrawLine(pen, iconSidebar.Width - 1, 0, iconSidebar.Width - 1, iconSidebar.Height);
-            };
-
-            var logoBtn = new Panel
-            {
-                Size = new Size(48, 48),
-                Location = new Point(8, 8),
-                BackColor = Theme.Surface
-            };
-            logoBtn.Paint += (s, e) =>
-            {
-                var g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                var rect = new Rectangle(2, 2, 44, 44);
-                using (var path = GraphicsExt.RoundedRect(rect, 12))
+                var rect = new Rectangle(0, 0, 43, 43);
+                var path = GraphicsExt.RoundedRect(rect, 11);
                 using (var brush = new LinearGradientBrush(rect, Theme.Accent, Theme.AccentDark, 90f))
                     g.FillPath(brush, path);
                 TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 14f, FontStyle.Bold), rect,
                     Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                path.Dispose();
             };
-            iconSidebar.Controls.Add(logoBtn);
+            headerPanel.Controls.Add(logoPanel);
 
-            AddIcon("Dashboard", "◍", "Dashboard");
-            AddIcon("Sys File Integrity", "◆", "SFC / DISM");
-            AddIcon("Registry Scan", "ƒ", "Registry Scan");
-            AddIcon("Service Scan", "⚙", "Service Scan");
-            AddIcon("Hijack Remover", "⬚", "Hijack Remover");
-            AddIcon("Virus Scanner", "🛡", "Virus Scanner");
-            AddIcon("Task Manager", "▤", "Task Manager");
-            AddIcon("Process Killer", "✖", "Process Killer");
-            AddIcon("Startup Manager", "↻", "Startup Manager");
-            AddIcon("File Analyzer", "⌬", "File Analyzer");
-            AddIcon("Hotkey Fix", "⌨", "Hotkey Fix");
-            AddIcon("Font Protect", "Aa", "Font Protect");
-            AddIcon("UAC Bypass", "🔓", "UAC Bypass");
-            AddIcon("Registry Editor", "📝", "Reg Editor");
-            AddIcon("Hosts Editor", "🌐", "Hosts Editor");
-            AddIcon("System Tools", "🔧", "System Tools");
-            AddIcon("File Browser", "📁", "File Browser");
-            AddIcon("Explorer", "▢", "Explorer");
-            AddIcon("CMD", "›_", "CMD");
-            AddIcon("PowerShell", "PS", "PowerShell");
-
-            Controls.Add(iconSidebar);
-        }
-
-        private void AddIcon(string tag, string icon, string tooltip)
-        {
-            var btn = new IconButton
+            headerTitle = new Label
             {
-                Icon = icon,
-                Tooltip = tooltip,
-                Size = new Size(48, 48),
-                Location = new Point(8, 64 + iconButtons.Count * 52),
-                Tag = tag
+                Text = "MazizTool",
+                Font = new Font("Segoe UI", 16f, FontStyle.Bold),
+                ForeColor = Theme.TextPrimary,
+                AutoSize = true,
+                Location = new Point(76, 14),
+                BackColor = Theme.Surface
             };
-            btn.Click += (s, e) => NavigateTo(tag);
-            iconSidebar.Controls.Add(btn);
-            iconButtons[tag] = btn;
+            headerSub = new Label
+            {
+                Text = "System Recovery & Anti-Malware Hub",
+                Font = new Font("Segoe UI", 8.5f),
+                ForeColor = Theme.TextMuted,
+                AutoSize = true,
+                Location = new Point(76, 38),
+                BackColor = Theme.Surface
+            };
+            headerPanel.Controls.Add(headerTitle);
+            headerPanel.Controls.Add(headerSub);
+
+            backButton = new Button
+            {
+                Text = "← Back",
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Theme.SurfaceLight,
+                ForeColor = Theme.Accent,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Size = new Size(76, 32),
+                Location = new Point(20, 19),
+                Cursor = Cursors.Hand,
+                Visible = false
+            };
+            backButton.FlatAppearance.BorderSize = 1;
+            backButton.FlatAppearance.BorderColor = Theme.Border;
+            backButton.Click += (s, e) => ShowHome();
+            headerPanel.Controls.Add(backButton);
+
+            searchBox = new TextBox
+            {
+                Font = new Font("Segoe UI", 10f),
+                BackColor = Theme.InputBg,
+                ForeColor = Theme.TextPrimary,
+                BorderStyle = BorderStyle.FixedSingle,
+                Size = new Size(280, 32),
+                Location = new Point(headerPanel.Width - 320, 19),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                PlaceholderText = "Search modules..."
+            };
+            searchBox.VisibleChanged += (s, e) =>
+            {
+                if (searchBox.Visible) searchBox.Location = new Point(headerPanel.Width - 320, 19);
+            };
+            headerPanel.Resize += (s, e) => { searchBox.Location = new Point(headerPanel.Width - 320, 19); };
+            searchBox.TextChanged += (s, e) => { if (isHome) FilterHomeCards(searchBox.Text); };
+            headerPanel.Controls.Add(searchBox);
+
+            Controls.Add(headerPanel);
         }
 
         private void SetupContent()
@@ -335,11 +236,9 @@ namespace MazizTool
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.Background,
-                Padding = new Padding(24)
+                Padding = new Padding(24, 80, 24, 8)
             };
             Controls.Add(contentPanel);
-            contentPanel.BringToFront();
-            topBar.BringToFront();
         }
 
         private void SetupBottomBar()
@@ -353,66 +252,26 @@ namespace MazizTool
             bottomBar.Paint += (s, e) =>
             {
                 var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Theme.Border, 1))
                     g.DrawLine(pen, 0, 0, bottomBar.Width, 0);
-                TextRenderer.DrawText(g, "MazizTool v5.0  ·  ready", new Font("Segoe UI", 8f),
-                    new Rectangle(12, 4, 400, 18), Theme.TextMuted, TextFormatFlags.Left);
+                TextRenderer.DrawText(g, "MazizTool v6.0", new Font("Segoe UI", 8f),
+                    new Rectangle(16, 6, 200, 16), Theme.TextMuted, TextFormatFlags.Left);
+                var dotRect = new Rectangle(232, 9, 6, 6);
+                using (var path = GraphicsExt.RoundedRect(dotRect, 3))
+                using (var brush = new SolidBrush(Theme.Emerald))
+                    g.FillPath(brush, path);
+                TextRenderer.DrawText(g, "ready", new Font("Segoe UI", 8f),
+                    new Rectangle(244, 6, 60, 16), Theme.TextMuted, TextFormatFlags.Left);
             };
             var memLabel = new Label
             {
-                Font = new Font("Segoe UI", 8f),
-                ForeColor = Theme.TextMuted,
-                AutoSize = true,
-                Anchor = AnchorStyles.Right,
-                Name = "memLabel"
+                Font = new Font("Segoe UI", 8f), ForeColor = Theme.TextMuted,
+                AutoSize = true, Anchor = AnchorStyles.Right, Name = "memLabel", BackColor = Theme.Surface
             };
             bottomBar.Controls.Add(memLabel);
-            bottomBar.Resize += (s, e) => { memLabel.Location = new Point(bottomBar.Width - 200, 5); };
+            bottomBar.Resize += (s, e) => { memLabel.Location = new Point(bottomBar.Width - 180, 6); };
             Controls.Add(bottomBar);
-        }
-
-        private void NavigateTo(string feature)
-        {
-            if (activeIcon != null && iconButtons.TryGetValue(feature, out var existing) && existing == activeIcon && currentView != null && feature != "Dashboard") return;
-
-            if (feature == "Explorer") { LaunchExplorer(); return; }
-            if (feature == "CMD") { LaunchCmd(); return; }
-            if (feature == "PowerShell") { LaunchPowerShell(); return; }
-
-            foreach (var btn in iconButtons.Values) btn.SetActive(false);
-            activeIcon = null;
-            if (iconButtons.TryGetValue(feature, out var nb)) { nb.SetActive(true); activeIcon = nb; }
-
-            try
-            {
-                currentView?.Dispose();
-                currentView = null;
-                contentPanel.Controls.Clear();
-                BuildFeature(feature);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Navigate error: " + ex.Message, "MazizTool");
-            }
-            UpdateModuleHeader(feature);
-        }
-
-        private void UpdateModuleHeader(string feature)
-        {
-            if (moduleTitleLabel != null) moduleTitleLabel.Text = feature;
-            var subs = new Dictionary<string, string>
-            {
-                {"Dashboard","system overview"}, {"Sys File Integrity","verify & repair system files"},
-                {"Registry Scan","full registry persistence scan"}, {"Service Scan","analyze Windows services"},
-                {"Hijack Remover","detect browser/DNS/proxy hijacks"}, {"Virus Scanner","signature + heuristic scan"},
-                {"Task Manager","running processes"}, {"Process Killer","force-kill malicious processes"},
-                {"Startup Manager","auto-start entries"}, {"File Analyzer","PE inspection & hashing"},
-                {"Hotkey Fix","unblock disabled hotkeys"}, {"Font Protect","restore system fonts"},
-                {"UAC Bypass","privilege escalation"}, {"Registry Editor","registry navigation"},
-                {"Hosts Editor","edit hosts file"}, {"System Tools","recovery utilities"},
-                {"File Browser","browse & manage files"}
-            };
-            if (moduleSubLabel != null) moduleSubLabel.Text = subs.TryGetValue(feature, out var sub) ? sub : "";
         }
 
         private void UpdateStatusBar()
@@ -421,41 +280,162 @@ namespace MazizTool
             {
                 var proc = Process.GetCurrentProcess();
                 var lbl = bottomBar.Controls.Find("memLabel", false).FirstOrDefault() as Label;
-                if (lbl != null)
-                    lbl.Text = $"mem:{proc.WorkingSet64 / 1024 / 1024}MB · procs:{Process.GetProcesses().Length}";
+                if (lbl != null) lbl.Text = $"mem:{proc.WorkingSet64 / 1024 / 1024}MB · procs:{Process.GetProcesses().Length}";
             }
             catch { }
         }
 
-        private void BuildFeature(string feature)
+        private void ShowHome()
         {
-            switch (feature)
+            isHome = true;
+            backButton.Visible = false;
+            logoPanel.Visible = true;
+            headerTitle.Text = "MazizTool";
+            headerSub.Text = "System Recovery & Anti-Malware Hub";
+            searchBox.Visible = true;
+            searchBox.Text = "";
+
+            currentView?.Dispose();
+            currentView = null;
+            contentPanel.Controls.Clear();
+
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, Padding = new Padding(0, 60, 0, 0) };
+
+            var welcomeCard = new Panel
             {
-                case "Dashboard": ShowDashboard(); break;
-                case "Sys File Integrity": ShowSystemFileIntegrity(); break;
-                case "Registry Scan": ShowRegistryScanner(); break;
-                case "Service Scan": ShowServiceScanner(); break;
-                case "Hijack Remover": ShowHijackRemover(); break;
-                case "Virus Scanner": ShowVirusScanner(); break;
-                case "Task Manager": ShowTaskManager(); break;
-                case "Process Killer": ShowProcessKiller(); break;
-                case "Startup Manager": ShowStartupManager(); break;
-                case "File Analyzer": ShowFileAnalyzer(); break;
-                case "Hotkey Fix": ShowHotkeyFix(); break;
-                case "Font Protect": ShowFontProtect(); break;
-                case "UAC Bypass": ShowUacBypass(); break;
-                case "Registry Editor": ShowRegistryEditor(); break;
-                case "Hosts Editor": ShowHostsEditor(); break;
-                case "System Tools": ShowSystemTools(); break;
-                case "File Browser": ShowFileBrowser(); break;
+                Size = new Size(1130, 70),
+                Dock = DockStyle.Top,
+                BackColor = Theme.Surface,
+                Margin = new Padding(0, 0, 0, 12)
+            };
+            welcomeCard.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                var rect = new Rectangle(0, 0, welcomeCard.Width - 1, welcomeCard.Height - 1);
+                var welcomePath = GraphicsExt.RoundedRect(rect, 12);
+                using (var brush = new LinearGradientBrush(rect, Theme.Surface, Theme.SurfaceLight, 0f))
+                    g.FillPath(brush, welcomePath);
+                using (var pen = new Pen(Theme.Border, 1))
+                    g.DrawPath(pen, welcomePath);
+                welcomePath.Dispose();
+                TextRenderer.DrawText(g, "Welcome to MazizTool", new Font("Segoe UI", 13f, FontStyle.Bold),
+                    new Rectangle(20, 12, 400, 24), Theme.TextPrimary, TextFormatFlags.Left);
+                TextRenderer.DrawText(g, "Select a module below or use search to find what you need", new Font("Segoe UI", 9f),
+                    new Rectangle(20, 38, 600, 20), Theme.TextSecondary, TextFormatFlags.Left);
+                var statRect = new Rectangle(welcomeCard.Width - 180, 20, 160, 40);
+                using (var statPath = GraphicsExt.RoundedRect(statRect, 8))
+                using (var statBrush = new SolidBrush(Theme.AccentDarker))
+                    g.FillPath(statBrush, statPath);
+                TextRenderer.DrawText(g, $"{modules.Length} modules", new Font("Segoe UI", 11f, FontStyle.Bold),
+                    statRect, Theme.Accent, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            p.Controls.Add(welcomeCard);
+
+            var flowPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                AutoScroll = true,
+                BackColor = Theme.Background,
+                Padding = new Padding(0, 80, 0, 8)
+            };
+
+            foreach (var mod in modules)
+            {
+                if (mod.Tag == "About") continue;
+                var card = new FeatureCard
+                {
+                    Icon = mod.Icon,
+                    Title = mod.Title,
+                    Subtitle = mod.Subtitle,
+                    Category = mod.Category,
+                    IconBg = mod.Color,
+                    Size = new Size(272, 140),
+                    Margin = new Padding(8, 8, 8, 8),
+                    Tag = mod.Tag
+                };
+                card.Click += (s, e) => NavigateTo(mod.Tag);
+                flowPanel.Controls.Add(card);
             }
+
+            p.Controls.Add(flowPanel);
+
+            contentPanel.Controls.Add(p);
+            currentView = p;
         }
 
-        private Panel NewView()
+        private void FilterHomeCards(string query)
         {
-            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, AutoScroll = true, Padding = new Padding(8) };
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                foreach (Control c in contentPanel.Controls)
+                    if (c is Panel p)
+                        foreach (Control fc in p.Controls)
+                            if (fc is FlowLayoutPanel fp)
+                                foreach (FeatureCard card in fp.Controls) card.Visible = true;
+                return;
+            }
+            var q = query.ToLower();
+            foreach (Control c in contentPanel.Controls)
+                if (c is Panel p)
+                    foreach (Control fc in p.Controls)
+                        if (fc is FlowLayoutPanel fp)
+                            foreach (FeatureCard card in fp.Controls)
+                                card.Visible = card.Title.ToLower().Contains(q) || card.Subtitle.ToLower().Contains(q) || card.Category.ToLower().Contains(q);
+        }
+
+        private void NavigateTo(string tag)
+        {
+            if (tag == "Explorer") { LaunchExplorer(); return; }
+            if (tag == "CMD") { LaunchCmd(); return; }
+            if (tag == "PowerShell") { LaunchPowerShell(); return; }
+            if (tag == "About") { ShowAbout(); return; }
+
+            isHome = false;
+            backButton.Visible = true;
+            logoPanel.Visible = false;
+            searchBox.Visible = false;
+
+            var mod = modules.FirstOrDefault(m => m.Tag == tag);
+            headerTitle.Text = mod.Title;
+            headerSub.Text = mod.Subtitle;
+
+            currentView?.Dispose();
+            currentView = null;
+            contentPanel.Controls.Clear();
+
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, AutoScroll = true, Padding = new Padding(16, 40, 16, 12) };
             currentView = p;
-            return p;
+
+            try
+            {
+                switch (tag)
+                {
+                    case "Sys File Integrity": ShowSystemFileIntegrity(p); break;
+                    case "Registry Scan": ShowRegistryScanner(p); break;
+                    case "Service Scan": ShowServiceScanner(p); break;
+                    case "Hijack Remover": ShowHijackRemover(p); break;
+                    case "Task Manager": ShowTaskManager(p); break;
+                    case "Process Killer": ShowProcessKiller(p); break;
+                    case "Startup Manager": ShowStartupManager(p); break;
+                    case "File Analyzer": ShowFileAnalyzer(p); break;
+                    case "Hotkey Fix": ShowHotkeyFix(p); break;
+                    case "Font Protect": ShowFontProtect(p); break;
+                    case "UAC Bypass": ShowUacBypass(p); break;
+                    case "Registry Editor": ShowRegistryEditor(p); break;
+                    case "Hosts Editor": ShowHostsEditor(p); break;
+                    case "System Tools": ShowSystemTools(p); break;
+                    case "File Browser": ShowFileBrowser(p); break;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Module error: " + ex.Message, "MazizTool");
+            }
+
+            contentPanel.Controls.Add(p);
         }
 
         private MaterialButton Btn(string text, Color accent, int x, int y, int w, int h = 38)
@@ -493,7 +473,7 @@ namespace MazizTool
             return new Label
             {
                 Text = text, Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = Theme.Accent, AutoSize = true, Location = new Point(x, y)
+                ForeColor = Theme.Accent, AutoSize = true, Location = new Point(x, y), BackColor = Theme.Surface
             };
         }
 
@@ -502,93 +482,11 @@ namespace MazizTool
             return new Label
             {
                 Text = text, Font = new Font("Segoe UI", 8.5f),
-                ForeColor = Theme.TextMuted, AutoSize = true, Location = new Point(x, y)
+                ForeColor = Theme.TextMuted, AutoSize = true, Location = new Point(x, y), BackColor = Theme.Background
             };
         }
 
         private void Toast(string msg, Color? color = null) => ToastNotif.Show(this, msg, color ?? Theme.Accent);
-
-        private void ShowDashboard()
-        {
-            var p = NewView();
-            int y = 8;
-
-            var infoCard = Card(8, y, 540, 180);
-            infoCard.Controls.Add(CardTitle("SYSTEM INFORMATION", 16, 12));
-            var infoBox = new TextBox
-            {
-                Multiline = true, ReadOnly = true, BackColor = Theme.Surface,
-                ForeColor = Theme.TextSecondary, BorderStyle = BorderStyle.None,
-                Font = new Font("Cascadia Code", 8.5f), Location = new Point(16, 36),
-                Size = new Size(510, 140), Text = SystemTools.GetSystemInfo()
-            };
-            infoCard.Controls.Add(infoBox);
-            p.Controls.Add(infoCard);
-
-            var quickCard = Card(560, y, 540, 180);
-            quickCard.Controls.Add(CardTitle("QUICK ACTIONS", 16, 12));
-            var ops = new (string, Color, Action)[]
-            {
-                ("Fix All", Theme.Emerald, () => { HotkeyRestorer.RestoreAll(); SystemTools.FixGroupPolicies(); Toast("All restrictions fixed."); }),
-                ("SFC Scan", Theme.Accent, () => { var f = CreateOutputForm("SFC /scannow"); _ = RunSfcInForm(f); }),
-                ("DISM Fix", Theme.Accent, () => { var f = CreateOutputForm("DISM /RestoreHealth"); _ = RunDismInForm(f); }),
-                ("Fix EXE", Theme.Warning, () => { SystemTools.RestoreExeAssociations(); Toast("EXE assoc fixed."); }),
-                ("Fix Hosts", Theme.Info, () => { SystemTools.FixHostsFile(); Toast("Hosts reset."); }),
-                ("Reset Net", Theme.Info, () => { SystemTools.ResetNetworkSettings(); Toast("Network reset."); }),
-                ("Restore Pt", Theme.Warning, () => { SystemTools.CreateRestorePoint("MazizTool"); Toast("Restore point created."); }),
-                ("Kill NonSys", Theme.Danger, () => { ProcessKiller.KillNonSystemProcesses(); Toast("Non-sys killed."); }),
-            };
-            for (int i = 0; i < ops.Length; i++)
-            {
-                var (name, color, act) = ops[i];
-                int col = i % 2, row = i / 2;
-                var b = Btn(name, color, 16 + col * 262, 38 + row * 34, 258, 28);
-                b.Click += (s, e) => act();
-                quickCard.Controls.Add(b);
-            }
-            p.Controls.Add(quickCard);
-            y += 192;
-
-            var modulesTitle = new Label
-            {
-                Text = "MODULES", Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = Theme.Accent, AutoSize = true, Location = new Point(8, y)
-            };
-            p.Controls.Add(modulesTitle);
-            y += 28;
-
-            var modules = new (string icon, string title, string desc, string tag, Color color)[]
-            {
-                ("◆", "SFC / DISM", "Verify system files", "Sys File Integrity", Theme.Accent),
-                ("ƒ", "Registry Scan", "Find malware persistence", "Registry Scan", Theme.Emerald),
-                ("⚙", "Service Scan", "Suspicious services", "Service Scan", Theme.Info),
-                ("⬚", "Hijack Remover", "Browser/DNS/proxy", "Hijack Remover", Theme.Warning),
-                ("🛡", "Virus Scanner", "Heuristic detection", "Virus Scanner", Theme.Danger),
-                ("▤", "Task Manager", "Running processes", "Task Manager", Theme.Accent),
-                ("✖", "Process Killer", "Force-kill malware", "Process Killer", Theme.Danger),
-                ("↻", "Startup Manager", "Auto-start entries", "Startup Manager", Theme.Warning),
-                ("⌬", "File Analyzer", "PE/hash/signature", "File Analyzer", Theme.Info),
-                ("⌨", "Hotkey Fix", "Unblock hotkeys", "Hotkey Fix", Theme.Emerald),
-                ("Aa", "Font Protect", "Restore fonts", "Font Protect", Theme.Accent),
-                ("🔓", "UAC Bypass", "Privilege escalation", "UAC Bypass", Theme.Warning),
-            };
-            int cardW = 268, cardH = 110, gap = 12;
-            for (int i = 0; i < modules.Length; i++)
-            {
-                var (icon, title, desc, tag, color) = modules[i];
-                int col = i % 4, row = i / 4;
-                var mc = new ModuleCard
-                {
-                    Icon = icon, Title = title, Description = desc, IconColor = color,
-                    Size = new Size(cardW, cardH),
-                    Location = new Point(8 + col * (cardW + gap), y + row * (cardH + gap)),
-                    Tag = tag
-                };
-                mc.Click += (s, e) => NavigateTo(tag);
-                p.Controls.Add(mc);
-            }
-            contentPanel.Controls.Add(p);
-        }
 
         private Form CreateOutputForm(string title)
         {
@@ -601,7 +499,7 @@ namespace MazizTool
             try { int d = 1; Win32.DwmSetWindowAttribute(f.Handle, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref d, 4); } catch { }
             var header = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = Theme.Surface };
             header.Paint += (s, e) => { using (var pen = new Pen(Theme.Border, 1)) e.Graphics.DrawLine(pen, 0, 39, header.Width, 39); };
-            var hTitle = new Label { Text = title, Font = Theme.HeaderFont, ForeColor = Theme.Accent, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(16, 0, 0, 0) };
+            var hTitle = new Label { Text = title, Font = Theme.HeaderFont, ForeColor = Theme.Accent, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(16, 0, 0, 0), BackColor = Theme.Surface };
             header.Controls.Add(hTitle);
             var output = new TextBox
             {
@@ -644,24 +542,42 @@ namespace MazizTool
             f.BeginInvokeIfCreated(() => { if (progress != null) progress.Value = 100; output.AppendText(Environment.NewLine + "[*] DONE." + Environment.NewLine); });
         }
 
-        private void ShowSystemFileIntegrity()
+        private async Task RunDismScanInForm(Form f)
         {
-            var p = NewView();
-            int y = 8;
-            var c1 = Card(8, y, contentPanel.Width - 64, 56);
+            var output = f.Tag as TextBox;
+            void OnOut(string line) => f.BeginInvokeIfCreated(() => { output.AppendText(line + Environment.NewLine); output.ScrollToCaret(); });
+            integrityScanner.OnOutput += OnOut;
+            await integrityScanner.RunDismScanHealthAsync();
+            integrityScanner.OnOutput -= OnOut;
+            f.BeginInvokeIfCreated(() => output.AppendText(Environment.NewLine + "[*] DONE." + Environment.NewLine));
+        }
+
+        private async Task RunDismCleanupInForm(Form f)
+        {
+            var output = f.Tag as TextBox;
+            void OnOut(string line) => f.BeginInvokeIfCreated(() => { output.AppendText(line + Environment.NewLine); output.ScrollToCaret(); });
+            integrityScanner.OnOutput += OnOut;
+            await integrityScanner.RunDismStartComponentCleanupAsync();
+            integrityScanner.OnOutput -= OnOut;
+            f.BeginInvokeIfCreated(() => output.AppendText(Environment.NewLine + "[*] DONE." + Environment.NewLine));
+        }
+
+        private void ShowSystemFileIntegrity(Panel p)
+        {
+            int y = 60;
+            var c1 = Card(8, y, 1130, 56);
             var sfc = Btn("SFC /SCANNOW", Theme.Accent, 16, 10, 180, 36);
             sfc.Click += (s, e) => { var f = CreateOutputForm("SFC /scannow"); _ = RunSfcInForm(f); };
-            var dScan = Btn("DISM /SCAN", Theme.Info, 202, 10, 180, 36);
+            var dScan = Btn("DISM /SCAN", Theme.Accent, 202, 10, 180, 36);
             dScan.Click += (s, e) => { var f = CreateOutputForm("DISM /ScanHealth"); _ = RunDismScanInForm(f); };
-            var dRest = Btn("DISM /RESTORE", Theme.Emerald, 388, 10, 180, 36);
+            var dRest = Btn("DISM /RESTORE", Theme.Accent, 388, 10, 180, 36);
             dRest.Click += (s, e) => { var f = CreateOutputForm("DISM /RestoreHealth"); _ = RunDismInForm(f); };
-            var dCl = Btn("DISM /CLEANUP", Theme.Warning, 574, 10, 180, 36);
+            var dCl = Btn("DISM /CLEANUP", Theme.Accent, 574, 10, 180, 36);
             dCl.Click += (s, e) => { var f = CreateOutputForm("DISM /StartComponentCleanup"); _ = RunDismCleanupInForm(f); };
             c1.Controls.Add(sfc); c1.Controls.Add(dScan); c1.Controls.Add(dRest); c1.Controls.Add(dCl);
             p.Controls.Add(c1);
             y += 68;
-
-            var c2 = Card(8, y, contentPanel.Width - 64, 56);
+            var c2 = Card(8, y, 1130, 56);
             var chk = Btn("Check Critical Files", Theme.Accent, 16, 10, 220, 36);
             chk.Click += (s, e) => PopulateCriticalFilesGrid(p, y + 68);
             var ifeo = Btn("IFEO Hijack Check", Theme.Danger, 242, 10, 220, 36);
@@ -687,27 +603,6 @@ namespace MazizTool
             };
             c2.Controls.Add(chk); c2.Controls.Add(ifeo); c2.Controls.Add(kd);
             p.Controls.Add(c2);
-            contentPanel.Controls.Add(p);
-        }
-
-        private async Task RunDismScanInForm(Form f)
-        {
-            var output = f.Tag as TextBox;
-            void OnOut(string line) => f.BeginInvokeIfCreated(() => { output.AppendText(line + Environment.NewLine); output.ScrollToCaret(); });
-            integrityScanner.OnOutput += OnOut;
-            await integrityScanner.RunDismScanHealthAsync();
-            integrityScanner.OnOutput -= OnOut;
-            f.BeginInvokeIfCreated(() => output.AppendText(Environment.NewLine + "[*] DONE." + Environment.NewLine));
-        }
-
-        private async Task RunDismCleanupInForm(Form f)
-        {
-            var output = f.Tag as TextBox;
-            void OnOut(string line) => f.BeginInvokeIfCreated(() => { output.AppendText(line + Environment.NewLine); output.ScrollToCaret(); });
-            integrityScanner.OnOutput += OnOut;
-            await integrityScanner.RunDismStartComponentCleanupAsync();
-            integrityScanner.OnOutput -= OnOut;
-            f.BeginInvokeIfCreated(() => output.AppendText(Environment.NewLine + "[*] DONE." + Environment.NewLine));
         }
 
         private void PopulateCriticalFilesGrid(Panel panel, int y)
@@ -745,11 +640,10 @@ namespace MazizTool
             box.BringToFront();
         }
 
-        private void ShowRegistryScanner()
+        private void ShowRegistryScanner(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 56);
+            int y = 60;
+            var c = Card(8, y, 1130, 56);
             var scan = Btn("Scan Registry", Theme.Accent, 16, 10, 180, 36);
             var fix = Btn("Fix All Policies", Theme.Danger, 202, 10, 180, 36);
             fix.Click += (s, e) => { HotkeyRestorer.FixAllHotkeyBlocks(); SystemTools.FixGroupPolicies(); Toast("Policies fixed."); };
@@ -757,7 +651,7 @@ namespace MazizTool
             p.Controls.Add(c);
             y += 68;
             var status = Hint("● ready", 12, y); p.Controls.Add(status); y += 24;
-            var grid = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 40);
+            var grid = Grid(8, y, 1130, 400);
             grid.Columns.Add("LVL", 50); grid.Columns.Add("Location", 280); grid.Columns.Add("Value", 140);
             grid.Columns.Add("Data", 260); grid.Columns.Add("Description", 240);
             scan.Click += (s, e) =>
@@ -776,16 +670,14 @@ namespace MazizTool
                 Task.Run(() => registryScanner.Scan());
             };
             p.Controls.Add(grid);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowServiceScanner()
+        private void ShowServiceScanner(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 56);
+            int y = 60;
+            var c = Card(8, y, 1130, 56);
             var scan = Btn("Scan Services", Theme.Accent, 16, 10, 180, 36);
-            var suspChk = new CheckBox { Text = "suspicious only", ForeColor = Theme.TextSecondary, Font = Theme.MonoFont, Location = new Point(206, 16), AutoSize = true };
+            var suspChk = new CheckBox { Text = "suspicious only", ForeColor = Theme.TextSecondary, Font = Theme.MonoFont, Location = new Point(206, 16), AutoSize = true, BackColor = Theme.Surface };
             var stop = Btn("Stop", Theme.Warning, 350, 10, 100, 36);
             var dis = Btn("Disable", Theme.Warning, 456, 10, 110, 36);
             var del = Btn("Delete", Theme.Danger, 572, 10, 110, 36);
@@ -793,7 +685,7 @@ namespace MazizTool
             p.Controls.Add(c);
             y += 68;
             var status = Hint("● ready", 12, y); p.Controls.Add(status); y += 24;
-            var grid = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 40);
+            var grid = Grid(8, y, 1130, 400);
             grid.Columns.Add("!", 24); grid.Columns.Add("Name", 160); grid.Columns.Add("Display Name", 180);
             grid.Columns.Add("State", 80); grid.Columns.Add("Start", 70); grid.Columns.Add("Binary Path", 320); grid.Columns.Add("Reason", 220);
             scan.Click += (s, e) =>
@@ -824,23 +716,21 @@ namespace MazizTool
             dis.Click += (s, e) => Act(ServiceScanner.DisableService, "Disable");
             del.Click += (s, e) => Act(ServiceScanner.DeleteService, "Delete");
             p.Controls.Add(grid);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowHijackRemover()
+        private void ShowHijackRemover(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 56);
+            int y = 60;
+            var c = Card(8, y, 1130, 56);
             var scan = Btn("Scan Hijacks", Theme.Accent, 16, 10, 180, 36);
-            var fp = Btn("Fix Proxy", Theme.Info, 202, 10, 150, 36);
-            var fw = Btn("Fix Winsock", Theme.Info, 358, 10, 150, 36);
-            var fdns = Btn("Reset DNS", Theme.Info, 514, 10, 150, 36);
+            var fp = Btn("Fix Proxy", Theme.Accent, 202, 10, 150, 36);
+            var fw = Btn("Fix Winsock", Theme.Accent, 358, 10, 150, 36);
+            var fdns = Btn("Reset DNS", Theme.Accent, 514, 10, 150, 36);
             c.Controls.Add(scan); c.Controls.Add(fp); c.Controls.Add(fw); c.Controls.Add(fdns);
             p.Controls.Add(c);
             y += 68;
             var status = Hint("● ready", 12, y); p.Controls.Add(status); y += 24;
-            var grid = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 40);
+            var grid = Grid(8, y, 1130, 400);
             grid.Columns.Add("!", 24); grid.Columns.Add("Category", 100); grid.Columns.Add("Detail", 280);
             grid.Columns.Add("Value", 260); grid.Columns.Add("Fix", 240);
             scan.Click += (s, e) =>
@@ -860,14 +750,12 @@ namespace MazizTool
             fw.Click += (s, e) => { hijackRemover.FixWinsock(); Toast("Winsock reset (reboot needed)."); };
             fdns.Click += (s, e) => { hijackRemover.ResetDns(); Toast("DNS reset."); };
             p.Controls.Add(grid);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowFileAnalyzer()
+        private void ShowFileAnalyzer(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 60);
+            int y = 60;
+            var c = Card(8, y, 1130, 60);
             var pathInput = new TextBox
             {
                 Location = new Point(16, 14), Size = new Size(500, 32),
@@ -886,11 +774,10 @@ namespace MazizTool
             y += 72;
             var result = new TextBox
             {
-                Location = new Point(8, y), Size = new Size(contentPanel.Width - 64, contentPanel.Height - y - 24),
+                Location = new Point(8, y), Size = new Size(1130, 400),
                 Multiline = true, ReadOnly = true, BackColor = Color.FromArgb(6, 10, 12),
                 ForeColor = Theme.Accent, Font = new Font("Cascadia Code", 9f), BorderStyle = BorderStyle.None,
-                ScrollBars = ScrollBars.Both, WordWrap = false,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+                ScrollBars = ScrollBars.Both, WordWrap = false
             };
             analyze.Click += (s, e) =>
             {
@@ -904,100 +791,19 @@ namespace MazizTool
                 });
             };
             p.Controls.Add(result);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowVirusScanner()
+        private void ShowTaskManager(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 60);
-            var pathInput = new TextBox
-            {
-                Location = new Point(16, 14), Size = new Size(400, 32),
-                BackColor = Theme.InputBg, ForeColor = Theme.Accent,
-                BorderStyle = BorderStyle.FixedSingle, Font = new Font("Cascadia Code", 9f), Text = @"C:\Users"
-            };
-            var scan = Btn("Start Scan", Theme.Danger, 420, 14, 130, 32);
-            var quick = Btn("Quick", Theme.Warning, 556, 14, 100, 32);
-            c.Controls.Add(pathInput); c.Controls.Add(scan); c.Controls.Add(quick);
-            p.Controls.Add(c);
-            y += 72;
-            var progress = new ProgressBar
-            {
-                Location = new Point(8, y), Size = new Size(contentPanel.Width - 64, 4),
-                Style = ProgressBarStyle.Continuous, ForeColor = Theme.Accent, BackColor = Theme.Surface
-            };
-            p.Controls.Add(progress);
-            y += 10;
-            var status = Hint("● ready", 12, y); p.Controls.Add(status); y += 22;
-            var grid = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 24);
-            grid.Columns.Add("Threat", 200); grid.Columns.Add("Level", 80); grid.Columns.Add("File", 380); grid.Columns.Add("Description", 240);
-            scan.Click += async (s, e) =>
-            {
-                if (scanner.IsScanning) { scanner.StopScan(); scan.Text = "Start Scan"; return; }
-                scan.Text = "Stop"; grid.Items.Clear(); progress.Value = 0;
-                await scanner.ScanAsync(pathInput.Text);
-                scan.Text = "Start Scan";
-            };
-            quick.Click += async (s, e) =>
-            {
-                if (scanner.IsScanning) return;
-                grid.Items.Clear(); progress.Value = 0;
-                await scanner.ScanAsync(Path.GetTempPath());
-                if (!scanner.IsScanning) await scanner.ScanAsync(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-            };
-            p.Controls.Add(grid);
-            contentPanel.Tag = grid;
-            contentPanel.Controls.Add(p);
-        }
-
-        private void OnScanProgress(string file, int count)
-        {
-            BeginInvokeIfCreated(() =>
-            {
-                if (currentView == null) return;
-                var s = currentView.Controls.OfType<Label>().FirstOrDefault(l => l.Text.StartsWith("●"));
-                if (s != null) s.Text = $"● scanning ({count} files)...";
-            });
-        }
-
-        private void OnThreatFound(VirusScanner.ScanResult result)
-        {
-            BeginInvokeIfCreated(() =>
-            {
-                var grid = contentPanel.Tag as ListView;
-                if (grid == null) return;
-                var it = new ListViewItem(result.ThreatName);
-                it.SubItems.Add(result.Level.ToString()); it.SubItems.Add(result.FilePath); it.SubItems.Add(result.Description);
-                it.ForeColor = result.Level == VirusScanner.ThreatLevel.Critical ? Theme.Danger :
-                               result.Level == VirusScanner.ThreatLevel.High ? Theme.Warning : Theme.TextSecondary;
-                grid.Items.Add(it);
-            });
-        }
-
-        private void OnScanComplete()
-        {
-            BeginInvokeIfCreated(() =>
-            {
-                if (currentView == null) return;
-                var s = currentView.Controls.OfType<Label>().FirstOrDefault(l => l.Text.StartsWith("●"));
-                if (s != null) s.Text = $"● done · files:{scanner.FilesScanned} threats:{scanner.ThreatsFound}";
-            });
-        }
-
-        private void ShowTaskManager()
-        {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 56);
-            var refresh = Btn("Refresh", Theme.Info, 16, 10, 110, 36);
+            int y = 60;
+            var c = Card(8, y, 1130, 56);
+            var refresh = Btn("Refresh", Theme.Accent, 16, 10, 110, 36);
             var kill = Btn("Kill", Theme.Danger, 132, 10, 100, 36);
             var killSys = Btn("Kill Non-Sys", Theme.Warning, 238, 10, 140, 36);
             c.Controls.Add(refresh); c.Controls.Add(kill); c.Controls.Add(killSys);
             p.Controls.Add(c);
             y += 68;
-            var lv = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 24);
+            var lv = Grid(8, y, 1130, 400);
             lv.Columns.Add("PID", 70); lv.Columns.Add("Name", 180); lv.Columns.Add("Path", 360);
             lv.Columns.Add("Mem(MB)", 90); lv.Columns.Add("Threads", 70);
             refresh.Click += (s, e) => RefreshTaskList(lv);
@@ -1010,7 +816,6 @@ namespace MazizTool
             killSys.Click += (s, e) => { ProcessKiller.KillNonSystemProcesses(); RefreshTaskList(lv); };
             p.Controls.Add(lv);
             RefreshTaskList(lv);
-            contentPanel.Controls.Add(p);
         }
 
         private void RefreshTaskList(ListView lv)
@@ -1028,11 +833,10 @@ namespace MazizTool
             }
         }
 
-        private void ShowProcessKiller()
+        private void ShowProcessKiller(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 60);
+            int y = 60;
+            var c = Card(8, y, 1130, 60);
             var name = new TextBox
             {
                 Location = new Point(16, 14), Size = new Size(280, 32),
@@ -1049,10 +853,10 @@ namespace MazizTool
             killAll.Click += (s, e) => { ProcessKiller.KillNonSystemProcesses(); Toast("Done."); };
             p.Controls.Add(killAll);
             y += 52;
-            var title = new Label { Text = "SUSPICIOUS PROCESSES", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Theme.Accent, AutoSize = true, Location = new Point(8, y) };
+            var title = new Label { Text = "SUSPICIOUS PROCESSES", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Theme.Accent, AutoSize = true, Location = new Point(8, y), BackColor = Theme.Background };
             p.Controls.Add(title);
             y += 24;
-            var lv = Grid(8, y, contentPanel.Width - 64, 240);
+            var lv = Grid(8, y, 1130, 240);
             lv.Columns.Add("PID", 70); lv.Columns.Add("Name", 200); lv.Columns.Add("Path", 460);
             foreach (var proc in VirusScanner.GetSuspiciousProcesses())
             {
@@ -1076,21 +880,19 @@ namespace MazizTool
                 Toast("Suspicious processes killed.");
             };
             p.Controls.Add(killSusp);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowStartupManager()
+        private void ShowStartupManager(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 56);
-            var refresh = Btn("Refresh", Theme.Info, 16, 10, 110, 36);
+            int y = 60;
+            var c = Card(8, y, 1130, 56);
+            var refresh = Btn("Refresh", Theme.Accent, 16, 10, 110, 36);
             var remove = Btn("Remove", Theme.Danger, 132, 10, 110, 36);
             var clean = Btn("Clean All", Theme.Warning, 248, 10, 130, 36);
             c.Controls.Add(refresh); c.Controls.Add(remove); c.Controls.Add(clean);
             p.Controls.Add(c);
             y += 68;
-            var lv = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 24);
+            var lv = Grid(8, y, 1130, 400);
             lv.Columns.Add("Name", 180); lv.Columns.Add("Command", 360); lv.Columns.Add("Location", 160); lv.Columns.Add("Status", 80);
             void RefreshList()
             {
@@ -1120,14 +922,12 @@ namespace MazizTool
             };
             p.Controls.Add(lv);
             RefreshList();
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowRegistryEditor()
+        private void ShowRegistryEditor(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 60);
+            int y = 60;
+            var c = Card(8, y, 1130, 60);
             var pathInput = new TextBox
             {
                 Location = new Point(16, 14), Size = new Size(500, 32),
@@ -1141,7 +941,7 @@ namespace MazizTool
             y += 72;
             var result = new TextBox
             {
-                Location = new Point(8, y), Size = new Size(contentPanel.Width - 64, 220),
+                Location = new Point(8, y), Size = new Size(1130, 220),
                 Multiline = true, ReadOnly = true, BackColor = Color.FromArgb(6, 10, 12),
                 ForeColor = Theme.Accent, Font = new Font("Cascadia Code", 9f), BorderStyle = BorderStyle.None,
                 ScrollBars = ScrollBars.Vertical, WordWrap = false
@@ -1149,12 +949,11 @@ namespace MazizTool
             go.Click += (s, e) => { result.Clear(); NavigateRegistry(pathInput.Text, result); };
             p.Controls.Add(result);
             y += 232;
-            var re = Btn("Open regedit", Theme.Info, 8, y, 150, 36);
+            var re = Btn("Open regedit", Theme.Accent, 8, y, 150, 36);
             re.Click += (s, e) => { HotkeyRestorer.RestoreRegistryEditor(); try { Process.Start("regedit.exe"); } catch { } };
             var fp = Btn("Fix Policies", Theme.Warning, 166, y, 150, 36);
             fp.Click += (s, e) => { SystemTools.FixGroupPolicies(); HotkeyRestorer.FixAllHotkeyBlocks(); Toast("Policies fixed."); };
             p.Controls.Add(re); p.Controls.Add(fp);
-            contentPanel.Controls.Add(p);
         }
 
         private void NavigateRegistry(string path, TextBox resultBox)
@@ -1186,22 +985,21 @@ namespace MazizTool
             catch (Exception ex) { resultBox.Text = "[!] " + ex.Message; }
         }
 
-        private void ShowFileBrowser()
+        private void ShowFileBrowser(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 60);
+            int y = 60;
+            var c = Card(8, y, 1130, 60);
             var pathInput = new TextBox
             {
                 Location = new Point(16, 14), Size = new Size(500, 32),
                 BackColor = Theme.InputBg, ForeColor = Theme.Accent,
                 BorderStyle = BorderStyle.FixedSingle, Font = new Font("Cascadia Code", 9f), Text = @"C:\"
             };
-            var browse = Btn("Browse", Theme.Info, 524, 14, 100, 32);
+            var browse = Btn("Browse", Theme.Accent, 524, 14, 100, 32);
             c.Controls.Add(pathInput); c.Controls.Add(browse);
             p.Controls.Add(c);
             y += 72;
-            var c2 = Card(8, y, contentPanel.Width - 64, 52);
+            var c2 = Card(8, y, 1130, 52);
             var searchInput = new TextBox
             {
                 Location = new Point(16, 10), Size = new Size(300, 32),
@@ -1209,11 +1007,11 @@ namespace MazizTool
                 BorderStyle = BorderStyle.FixedSingle, Font = new Font("Cascadia Code", 9f),
                 PlaceholderText = "search files..."
             };
-            var search = Btn("Search", Theme.Info, 322, 10, 100, 32);
+            var search = Btn("Search", Theme.Accent, 322, 10, 100, 32);
             c2.Controls.Add(searchInput); c2.Controls.Add(search);
             p.Controls.Add(c2);
             y += 64;
-            var lv = Grid(8, y, contentPanel.Width - 64, contentPanel.Height - y - 24);
+            var lv = Grid(8, y, 1130, 400);
             lv.Columns.Add("Name", 320); lv.Columns.Add("Size", 100); lv.Columns.Add("Modified", 160); lv.Columns.Add("Type", 100);
             lv.DoubleClick += (s, e) =>
             {
@@ -1252,7 +1050,6 @@ namespace MazizTool
             pathInput.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) RefreshFileList(lv, pathInput.Text); };
             p.Controls.Add(lv);
             RefreshFileList(lv, pathInput.Text);
-            contentPanel.Controls.Add(p);
         }
 
         private void RefreshFileList(ListView list, string path)
@@ -1307,14 +1104,13 @@ namespace MazizTool
             return $"{size:F1} {sizes[order]}";
         }
 
-        private void ShowHostsEditor()
+        private void ShowHostsEditor(Panel p)
         {
-            var p = NewView();
-            int y = 8;
+            int y = 60;
             var hostsPath = Path.Combine(Environment.SystemDirectory, "drivers", "etc", "hosts");
             var content = new TextBox
             {
-                Location = new Point(8, y), Size = new Size(contentPanel.Width - 64, 320),
+                Location = new Point(8, y), Size = new Size(1130, 320),
                 Multiline = true, BackColor = Color.FromArgb(6, 10, 12), ForeColor = Theme.Accent,
                 BorderStyle = BorderStyle.FixedSingle, Font = new Font("Cascadia Code", 10f),
                 ScrollBars = ScrollBars.Vertical, WordWrap = false,
@@ -1322,8 +1118,8 @@ namespace MazizTool
             };
             p.Controls.Add(content);
             y += 330;
-            var save = Btn("Save", Theme.Emerald, 8, y, 100, 36);
-            var reload = Btn("Reload", Theme.Info, 116, y, 100, 36);
+            var save = Btn("Save", Theme.Accent, 8, y, 100, 36);
+            var reload = Btn("Reload", Theme.Accent, 116, y, 100, 36);
             var reset = Btn("Reset", Theme.Warning, 226, y, 130, 36);
             var flush = Btn("Flush DNS", Theme.Accent, 364, y, 130, 36);
             save.Click += (s, e) =>
@@ -1343,14 +1139,12 @@ namespace MazizTool
             reset.Click += (s, e) => { SystemTools.FixHostsFile(); content.Text = File.ReadAllText(hostsPath); Toast("Hosts reset."); };
             flush.Click += (s, e) => { Process.Start(new ProcessStartInfo { FileName = "ipconfig.exe", Arguments = "/flushdns", UseShellExecute = false, CreateNoWindow = true })?.WaitForExit(3000); Toast("DNS flushed."); };
             p.Controls.Add(save); p.Controls.Add(reload); p.Controls.Add(reset); p.Controls.Add(flush);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowUacBypass()
+        private void ShowUacBypass(Panel p)
         {
-            var p = NewView();
-            int y = 8;
-            var c = Card(8, y, contentPanel.Width - 64, 60);
+            int y = 60;
+            var c = Card(8, y, 1130, 60);
             var cmd = new TextBox
             {
                 Location = new Point(16, 14), Size = new Size(400, 32),
@@ -1371,7 +1165,7 @@ namespace MazizTool
             int y2 = y + methods.Count * 46 + 10;
             var runAs = Btn("Run as Admin", Theme.Warning, 8, y2, 300, 40);
             runAs.Click += (s, e) => { UacBypass.ElevateProcess(cmd.Text); Toast("Elevation requested."); };
-            var priv = Btn("Enable SeDebugPriv", Theme.Info, 8, y2 + 46, 300, 40);
+            var priv = Btn("Enable SeDebugPriv", Theme.Accent, 8, y2 + 46, 300, 40);
             priv.Click += (s, e) =>
             {
                 UacBypass.EnablePrivilege("SeDebugPrivilege");
@@ -1382,52 +1176,49 @@ namespace MazizTool
                 Toast("Privileges enabled.");
             };
             p.Controls.Add(runAs); p.Controls.Add(priv);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowHotkeyFix()
+        private void ShowHotkeyFix(Panel p)
         {
-            var p = NewView();
-            int y = 8;
+            int y = 60;
             var actions = new (string, Color, Action)[]
             {
-                ("Fix All Restrictions", Theme.Emerald, () => { HotkeyRestorer.RestoreAll(); SystemTools.FixGroupPolicies(); Toast("All restrictions removed."); }),
-                ("Enable Alt+Tab", Theme.Info, () => { HotkeyRestorer.EnableAltTab(); Toast("Alt+Tab restored."); }),
-                ("Enable Ctrl+Alt+Del", Theme.Info, () => { HotkeyRestorer.EnableCtrlAltDel(); Toast("Ctrl+Alt+Del restored."); }),
-                ("Restore TaskMgr", Theme.Warning, () => { HotkeyRestorer.RestoreTaskManager(); Toast("Task Manager unblocked."); }),
-                ("Restore Regedit", Theme.Warning, () => { HotkeyRestorer.RestoreRegistryEditor(); Toast("Regedit unblocked."); }),
+                ("Fix All Restrictions", Theme.Accent, () => { HotkeyRestorer.RestoreAll(); SystemTools.FixGroupPolicies(); Toast("All restrictions removed."); }),
+                ("Enable Alt+Tab", Theme.Accent, () => { HotkeyRestorer.EnableAltTab(); Toast("Alt+Tab restored."); }),
+                ("Enable Ctrl+Alt+Del", Theme.Accent, () => { HotkeyRestorer.EnableCtrlAltDel(); Toast("Ctrl+Alt+Del restored."); }),
+                ("Restore TaskMgr", Theme.Accent, () => { HotkeyRestorer.RestoreTaskManager(); Toast("Task Manager unblocked."); }),
+                ("Restore Regedit", Theme.Accent, () => { HotkeyRestorer.RestoreRegistryEditor(); Toast("Regedit unblocked."); }),
                 ("Restore Hotkeys", Theme.Accent, () => { HotkeyRestorer.RestoreHotkeys(); Toast("Hotkeys restored."); }),
-                ("Fix Group Policies", Theme.Danger, () => { SystemTools.FixGroupPolicies(); Toast("Policies reset."); }),
-                ("Show Hidden Files", Theme.Info, () => { SystemTools.RestoreHiddenFiles(); Toast("Hidden files shown."); }),
+                ("Fix Group Policies", Theme.Warning, () => { SystemTools.FixGroupPolicies(); Toast("Policies reset."); }),
+                ("Show Hidden Files", Theme.Accent, () => { SystemTools.RestoreHiddenFiles(); Toast("Hidden files shown."); }),
             };
+            int bw = (1130 - 8) / 2;
             for (int i = 0; i < actions.Length; i++)
             {
                 var (name, color, act) = actions[i];
                 int col = i % 2, row = i / 2;
-                var b = Btn(name, color, 8 + col * 350, y + row * 50, 340, 42);
+                var b = Btn(name, color, 8 + col * (bw + 8), y + row * 48, bw, 42);
                 b.Click += (s, e) => act();
                 p.Controls.Add(b);
             }
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowFontProtect()
+        private void ShowFontProtect(Panel p)
         {
-            var p = NewView();
-            int y = 8;
+            int y = 60;
             bool tampered = FontProtector.IsSystemFontTampered();
-            var c = Card(8, y, contentPanel.Width - 64, 100);
+            var c = Card(8, y, 1130, 100);
             var status = new Label
             {
                 Text = tampered ? "⚠  FONT TAMPERING DETECTED" : "✓  system fonts appear normal",
                 Font = new Font("Segoe UI", 12f, FontStyle.Bold),
                 ForeColor = tampered ? Theme.Danger : Theme.Emerald,
-                AutoSize = true, Location = new Point(16, 16)
+                AutoSize = true, Location = new Point(16, 16), BackColor = Theme.Surface
             };
             var info = new Label
             {
                 Text = "malware may substitute Segoe UI with blank fonts to hide text.\nthis restores registry font settings & broadcasts WM_FONTCHANGE.",
-                Font = Theme.MonoFont, ForeColor = Theme.TextMuted, AutoSize = true, Location = new Point(16, 48)
+                Font = Theme.MonoFont, ForeColor = Theme.TextMuted, AutoSize = true, Location = new Point(16, 48), BackColor = Theme.Surface
             };
             c.Controls.Add(status); c.Controls.Add(info);
             p.Controls.Add(c);
@@ -1435,35 +1226,101 @@ namespace MazizTool
             var restore = Btn("Restore System Fonts", Theme.Accent, 8, y, 260, 42);
             restore.Click += (s, e) => { FontProtector.RestoreSystemFonts(); Toast("Fonts restored. Reboot recommended."); };
             p.Controls.Add(restore);
-            contentPanel.Controls.Add(p);
         }
 
-        private void ShowSystemTools()
+        private void ShowSystemTools(Panel p)
         {
-            var p = NewView();
-            int y = 8;
+            int y = 60;
             var tools = new (string, Color, Action)[]
             {
-                ("Restore .exe Assoc", Theme.Warning, () => { SystemTools.RestoreExeAssociations(); Toast("Done."); }),
-                ("Reset Network", Theme.Info, () => { SystemTools.ResetNetworkSettings(); Toast("Done."); }),
-                ("Clear Temp", Theme.Accent, () => { SystemTools.ClearTempFiles(); Toast("Done."); }),
-                ("Create Restore Pt", Theme.Emerald, () => { SystemTools.CreateRestorePoint("MazizTool"); Toast("Done."); }),
+                ("Restore .exe Assoc", Theme.Accent, () => { SystemTools.RestoreExeAssociations(); Toast("Done."); }),
+                ("Reset Network", Theme.Accent, () => { SystemTools.ResetNetworkSettings(); Toast("Done."); }),
+                ("Clear Temp Files", Theme.Accent, () => { SystemTools.ClearTempFiles(); Toast("Done."); }),
+                ("Create Restore Pt", Theme.Accent, () => { SystemTools.CreateRestorePoint("MazizTool"); Toast("Done."); }),
                 ("CHKDSK C: /f /r", Theme.Warning, () => SystemTools.CheckDisk()),
-                ("Safe Mode +Net", Theme.Info, () => { SystemTools.EnableSafeModeNetworking(); Toast("Safe mode enabled."); }),
+                ("Safe Mode +Net", Theme.Accent, () => { SystemTools.EnableSafeModeNetworking(); Toast("Safe mode enabled."); }),
                 ("Disable Safe Mode", Theme.Accent, () => { SystemTools.DisableSafeMode(); Toast("Done."); }),
-                ("Fix Hosts", Theme.Warning, () => { SystemTools.FixHostsFile(); Toast("Done."); }),
-                ("Show Hidden Files", Theme.Info, () => { SystemTools.RestoreHiddenFiles(); Toast("Done."); }),
-                ("Restore .com Assoc", Theme.Warning, () => { SystemTools.RestoreExeAssociations(); Toast("Done."); }),
+                ("Fix Hosts File", Theme.Accent, () => { SystemTools.FixHostsFile(); Toast("Done."); }),
+                ("Show Hidden Files", Theme.Accent, () => { SystemTools.RestoreHiddenFiles(); Toast("Done."); }),
+                ("Rebuild Icon Cache", Theme.Accent, () => { SystemTools.RebuildIconCache(); Toast("Icon cache rebuilt."); }),
+                ("Repair WMI", Theme.Warning, () => { SystemTools.RepairWMI(); Toast("WMI repaired."); }),
+                ("Reset Firewall", Theme.Warning, () => { SystemTools.ResetFirewall(); Toast("Firewall reset."); }),
+                ("Fix COM Reg", Theme.Accent, () => { SystemTools.FixCOMRegistration(); Toast("COM fixed."); }),
+                ("Rebuild Font Cache", Theme.Accent, () => { SystemTools.RebuildFontCache(); Toast("Font cache rebuilt."); }),
+                ("Fix Print Spooler", Theme.Accent, () => { SystemTools.FixPrintSpooler(); Toast("Print spooler fixed."); }),
+                ("Restart Explorer", Theme.Accent, () => { SystemTools.RestoreExplorer(); Toast("Explorer restarted."); }),
             };
+            int bw = (1130 - 8) / 2;
             for (int i = 0; i < tools.Length; i++)
             {
                 var (name, color, act) = tools[i];
                 int col = i % 2, row = i / 2;
-                var b = Btn(name, color, 8 + col * 350, y + row * 50, 340, 42);
+                var b = Btn(name, color, 8 + col * (bw + 8), y + row * 48, bw, 42);
                 b.Click += (s, e) => act();
                 p.Controls.Add(b);
             }
-            contentPanel.Controls.Add(p);
+        }
+
+        private void ShowAbout()
+        {
+            using (var dlg = new Form
+            {
+                Text = "About MazizTool",
+                Size = new Size(440, 360),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false, MinimizeBox = false,
+                BackColor = Theme.Surface,
+                ForeColor = Theme.TextPrimary,
+                Font = Theme.UIFont
+            })
+            {
+                try { int d = 1; Win32.DwmSetWindowAttribute(dlg.Handle, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref d, 4); } catch { }
+                var logo = new Label
+                {
+                    Text = "MZ", Font = new Font("Segoe UI", 32f, FontStyle.Bold),
+                    ForeColor = Theme.Accent, TextAlign = ContentAlignment.MiddleCenter,
+                    Dock = DockStyle.Top, Height = 90, BackColor = Theme.Surface
+                };
+                logo.Paint += (s, e) =>
+                {
+                    var g = e.Graphics;
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    var rect = new Rectangle(logo.Width / 2 - 30, 14, 60, 60);
+                    var path = GraphicsExt.RoundedRect(rect, 15);
+                    using (var brush = new LinearGradientBrush(rect, Theme.Accent, Theme.AccentDark, 90f))
+                        g.FillPath(brush, path);
+                    TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 22f, FontStyle.Bold), rect,
+                        Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    path.Dispose();
+                };
+                dlg.Controls.Add(logo);
+                var info = new Label
+                {
+                    Text = "MazizTool v6.0\nSystem Recovery & Anti-Malware Hub",
+                    Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+                    ForeColor = Theme.TextPrimary, Dock = DockStyle.Top, Height = 50,
+                    TextAlign = ContentAlignment.MiddleCenter, BackColor = Theme.Surface
+                };
+                dlg.Controls.Add(info);
+                var desc = new Label
+                {
+                    Text = "19 recovery modules · SFC/DISM · Registry & Service scanners\nTask Manager · Process Killer · File Analyzer\nHotkey Restorer · UAC Bypass · Hijack Remover · System Tools\n\nBuilt with .NET 8 · Windows Forms",
+                    Font = new Font("Segoe UI", 9f), ForeColor = Theme.TextMuted,
+                    Dock = DockStyle.Top, Height = 120, TextAlign = ContentAlignment.MiddleCenter, BackColor = Theme.Surface
+                };
+                dlg.Controls.Add(desc);
+                var ok = new Button
+                {
+                    Text = "OK", FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent,
+                    ForeColor = Color.Black, Size = new Size(100, 34),
+                    Location = new Point(170, 280), Cursor = Cursors.Hand
+                };
+                ok.FlatAppearance.BorderSize = 0;
+                ok.Click += (s, e) => dlg.Close();
+                dlg.Controls.Add(ok);
+                dlg.ShowDialog(this);
+            }
         }
 
         private void LaunchExplorer() { try { Process.Start("explorer.exe"); } catch { } }
