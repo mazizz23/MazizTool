@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,7 +20,6 @@ namespace MazizTool
         private Panel contentPanel;
         private Panel headerPanel;
         private Label titleLabel;
-        private Label statusLabel;
         private Panel currentFeaturePanel;
         private Dictionary<string, NavButton> navButtons = new Dictionary<string, NavButton>();
         private NavButton activeNav;
@@ -30,11 +30,10 @@ namespace MazizTool
         private FileAnalyzer fileAnalyzer;
         private HijackRemover hijackRemover;
         private System.Windows.Forms.Timer statusTimer;
-        private AnimTimer fadeAnim;
-        private float contentOpacity = 1f;
+        private Form colorPopover;
 
-        private const int SidebarWidth = 210;
-        private const int HeaderHeight = 56;
+        private const int SidebarWidth = 232;
+        private const int HeaderHeight = 60;
 
         public MainForm()
         {
@@ -53,7 +52,6 @@ namespace MazizTool
                 serviceScanner = new ServiceScanner();
                 fileAnalyzer = new FileAnalyzer();
                 hijackRemover = new HijackRemover();
-                fadeAnim = new AnimTimer();
                 ShowDashboard();
                 statusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
                 statusTimer.Tick += (s, e) => UpdateStatusBar();
@@ -70,8 +68,8 @@ namespace MazizTool
         private void InitializeForm()
         {
             Text = "MazizTool";
-            Size = new Size(1320, 820);
-            MinimumSize = new Size(1000, 620);
+            Size = new Size(1340, 840);
+            MinimumSize = new Size(1020, 640);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Theme.Background;
             ForeColor = Theme.TextPrimary;
@@ -86,50 +84,54 @@ namespace MazizTool
             try { int d = 1; Win32.DwmSetWindowAttribute(Handle, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref d, 4); } catch { }
         }
 
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            GraphicsExt.DrawGradientBg(e.Graphics, ClientRectangle, Theme.BackgroundTop, Theme.Background);
+        }
+
         private void SetupHeader()
         {
             headerPanel = new Panel
             {
                 Height = HeaderHeight,
                 Dock = DockStyle.Top,
-                BackColor = Theme.Surface
+                BackColor = Color.Transparent
             };
             headerPanel.Paint += (s, e) =>
             {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
                 using (var pen = new Pen(Theme.Border, 1))
-                    e.Graphics.DrawLine(pen, 0, HeaderHeight - 1, headerPanel.Width, HeaderHeight - 1);
+                    g.DrawLine(pen, 0, HeaderHeight - 1, headerPanel.Width, HeaderHeight - 1);
+                var dotRect = new Rectangle(SidebarWidth + 20, 24, 8, 8);
+                using (var path = GraphicsExt.RoundedRect(dotRect, 4))
+                using (var brush = new SolidBrush(Theme.Emerald))
+                    g.FillPath(brush, path);
+                TextRenderer.DrawText(g, "online", new Font("Segoe UI", 8f),
+                    new Rectangle(SidebarWidth + 34, 22, 100, 16), Theme.TextMuted, TextFormatFlags.Left);
             };
 
             titleLabel = new Label
             {
-                Text = "MazizTool",
-                Font = Theme.LogoFont,
-                ForeColor = Theme.Accent,
+                Text = "Dashboard",
+                Font = new Font("Segoe UI", 16f, FontStyle.Bold),
+                ForeColor = Theme.TextPrimary,
                 AutoSize = true,
-                Location = new Point(SidebarWidth + 16, 14)
-            };
-
-            statusLabel = new Label
-            {
-                Text = "●",
-                Font = new Font("Segoe UI", 10f),
-                ForeColor = Theme.Emerald,
-                AutoSize = true,
-                Location = new Point(SidebarWidth + 130, 20)
+                Location = new Point(SidebarWidth + 60, 18),
+                Name = "moduleTitle"
             };
 
             var statusText = new Label
             {
-                Text = "system_normal",
-                Font = new Font("Segoe UI", 8f),
+                Text = "",
+                Font = new Font("Segoe UI", 8.5f),
                 ForeColor = Theme.TextMuted,
                 AutoSize = true,
-                Location = new Point(SidebarWidth + 148, 22)
+                Location = new Point(SidebarWidth + 60, 40),
+                Name = "statusText"
             };
-            statusText.Name = "statusText";
 
             headerPanel.Controls.Add(titleLabel);
-            headerPanel.Controls.Add(statusLabel);
             headerPanel.Controls.Add(statusText);
             Controls.Add(headerPanel);
         }
@@ -140,35 +142,42 @@ namespace MazizTool
             {
                 Width = SidebarWidth,
                 Dock = DockStyle.Left,
-                BackColor = Theme.Surface
+                BackColor = Color.Transparent
+            };
+            sidebarPanel.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var pen = new Pen(Theme.Border, 1))
+                    g.DrawLine(pen, sidebarPanel.Width - 1, 0, sidebarPanel.Width - 1, sidebarPanel.Height);
             };
 
             var logoPanel = new Panel
             {
-                Height = 60,
+                Height = 68,
                 Dock = DockStyle.Top,
-                BackColor = Theme.Surface
+                BackColor = Color.Transparent
             };
             logoPanel.Paint += (s, e) =>
             {
                 var g = e.Graphics;
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                var circleRect = new Rectangle(14, 14, 32, 32);
-                using (var path = GraphicsExt.RoundedRect(circleRect, 8))
-                using (var brush = new SolidBrush(Theme.Accent))
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                var circleRect = new Rectangle(18, 16, 36, 36);
+                using (var path = GraphicsExt.RoundedRect(circleRect, 10))
+                using (var brush = new LinearGradientBrush(circleRect, Theme.Accent, Theme.AccentDark, 90f))
                     g.FillPath(brush, path);
-                TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 11f, FontStyle.Bold), circleRect,
-                    Color.FromArgb(8, 18, 14), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                TextRenderer.DrawText(g, "MazizTool", new Font("Segoe UI", 11f, FontStyle.Bold),
-                    new Rectangle(54, 14, 150, 20), Theme.TextPrimary, TextFormatFlags.Left);
-                TextRenderer.DrawText(g, "recovery hub v3.0", new Font("Segoe UI", 8f),
-                    new Rectangle(54, 32, 150, 16), Theme.TextMuted, TextFormatFlags.Left);
+                TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 12f, FontStyle.Bold), circleRect,
+                    Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                TextRenderer.DrawText(g, "MazizTool", new Font("Segoe UI", 12f, FontStyle.Bold),
+                    new Rectangle(60, 18, 160, 22), Theme.TextPrimary, TextFormatFlags.Left);
+                TextRenderer.DrawText(g, "recovery hub", new Font("Segoe UI", 8.5f),
+                    new Rectangle(60, 38, 160, 16), Theme.TextMuted, TextFormatFlags.Left);
             };
             sidebarPanel.Controls.Add(logoPanel);
 
             AddSep();
             AddSection("RECOVERY");
-            AddNav("Dashboard", "▣", "Dashboard");
+            AddNav("Dashboard", "◍", "Dashboard");
             AddNav("SFC / DISM", "◆", "Sys File Integrity");
             AddNav("Registry Scan", "ƒ", "Registry Scan");
             AddNav("Service Scan", "⚙", "Service Scan");
@@ -198,65 +207,129 @@ namespace MazizTool
             AddNav("CMD", "›_", "CMD");
             AddNav("PowerShell", "PS", "PowerShell");
 
-            AddColorPicker();
+            AddThemeButton();
 
             Controls.Add(sidebarPanel);
         }
 
-        private void AddColorPicker()
+        private void AddThemeButton()
         {
-            var colorPanel = new Panel
+            var themeBtn = new Panel
             {
-                Height = 36,
+                Height = 40,
                 Dock = DockStyle.Bottom,
-                BackColor = Theme.Surface,
-                Padding = new Padding(8, 8, 8, 4)
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand
             };
-            var colorTitle = new Label
+            themeBtn.Paint += (s, e) =>
             {
-                Text = "THEME",
-                Font = new Font("Segoe UI", 7f, FontStyle.Bold),
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                var rect = new Rectangle(16, 8, SidebarWidth - 32, 28);
+                var path = GraphicsExt.RoundedRect(rect, 8);
+                using (var brush = new SolidBrush(Theme.SurfaceLight))
+                    g.FillPath(brush, path);
+                using (var pen = new Pen(Theme.Border, 1))
+                    g.DrawPath(pen, path);
+                path.Dispose();
+                var swatchRect = new Rectangle(26, 16, 14, 14);
+                using (var path2 = GraphicsExt.RoundedRect(swatchRect, 4))
+                using (var brush = new SolidBrush(Theme.Accent))
+                    g.FillPath(brush, path2);
+                TextRenderer.DrawText(g, "Theme", new Font("Segoe UI", 9f, FontStyle.Bold),
+                    new Rectangle(48, 8, 100, 28), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                TextRenderer.DrawText(g, "▾", new Font("Segoe UI", 9f),
+                    new Rectangle(SidebarWidth - 50, 8, 24, 28), Theme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            themeBtn.Click += (s, e) => ToggleThemePopover(themeBtn);
+            sidebarPanel.Controls.Add(themeBtn);
+        }
+
+        private void ToggleThemePopover(Control anchor)
+        {
+            if (colorPopover != null && !colorPopover.IsDisposed)
+            {
+                colorPopover.Close();
+                colorPopover = null;
+                return;
+            }
+
+            var pop = new Form
+            {
+                FormBorderStyle = FormBorderStyle.None,
+                StartPosition = FormStartPosition.Manual,
+                ShowInTaskbar = false,
+                BackColor = Theme.SurfaceElevated,
+                Size = new Size(220, 280),
+                Location = anchor.PointToScreen(new Point(0, -282))
+            };
+            try { int d = 1; Win32.DwmSetWindowAttribute(pop.Handle, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref d, 4); } catch { }
+            pop.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                var rect = new Rectangle(0, 0, pop.Width - 1, pop.Height - 1);
+                var path = GraphicsExt.RoundedRect(rect, 12);
+                using (var brush = new SolidBrush(Theme.SurfaceElevated))
+                    g.FillPath(brush, path);
+                using (var pen = new Pen(Theme.BorderLight, 1))
+                    g.DrawPath(pen, path);
+                path.Dispose();
+            };
+
+            var title = new Label
+            {
+                Text = "Choose accent color",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 AutoSize = true,
-                Location = new Point(8, 2)
+                Location = new Point(16, 14)
             };
-            colorPanel.Controls.Add(colorTitle);
+            pop.Controls.Add(title);
 
             for (int i = 0; i < Theme.Presets.Count; i++)
             {
                 var preset = Theme.Presets[i];
                 var idx = i;
-                var dot = new Panel
+                int row = i / 2, col = i % 2;
+                var item = new Panel
                 {
-                    Size = new Size(16, 16),
-                    Location = new Point(8 + i * 19, 18),
-                    BackColor = preset.Accent,
-                    Cursor = Cursors.Hand
+                    Size = new Size(96, 44),
+                    Location = new Point(12 + col * 102, 40 + row * 50),
+                    Cursor = Cursors.Hand,
+                    BackColor = Color.Transparent
                 };
-                dot.Paint += (s, e) =>
+                item.Paint += (s, e) =>
                 {
                     var g = e.Graphics;
-                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    using (var path = GraphicsExt.RoundedRect(new Rectangle(0, 0, 15, 15), 4))
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    var swatchRect = new Rectangle(6, 12, 20, 20);
+                    using (var path = GraphicsExt.RoundedRect(swatchRect, 6))
                     using (var brush = new SolidBrush(preset.Accent))
                         g.FillPath(brush, path);
                     if (Theme.CurrentPresetIndex == idx)
                     {
                         using (var pen = new Pen(Color.White, 2))
-                        using (var path2 = GraphicsExt.RoundedRect(new Rectangle(1, 1, 13, 13), 3))
+                        using (var path2 = GraphicsExt.RoundedRect(Rectangle.Inflate(swatchRect, 1, 1), 7))
                             g.DrawPath(pen, path2);
                     }
+                    TextRenderer.DrawText(g, preset.Name, new Font("Segoe UI", 8.5f),
+                        new Rectangle(32, 0, 60, 44), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
                 };
-                dot.Click += (s, e) =>
+                item.Click += (s, e) =>
                 {
                     Theme.ApplyPreset(idx);
-                    foreach (Control c in colorPanel.Controls)
-                        if (c is Panel p && p.Size == new Size(16, 16)) p.Invalidate();
-                    Invalidate();
+                    pop.Close();
+                    colorPopover = null;
+                    Invalidate(true);
+                    foreach (Control c in Controls) c.Invalidate(true);
                 };
-                colorPanel.Controls.Add(dot);
+                pop.Controls.Add(item);
             }
-            sidebarPanel.Controls.Add(colorPanel);
+
+            colorPopover = pop;
+            pop.Deactivate += (s, e) => { pop.Close(); colorPopover = null; };
+            pop.Show(this);
         }
 
         private void AddSection(string text)
@@ -267,7 +340,7 @@ namespace MazizTool
                 Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
                 ForeColor = Theme.TextMuted,
                 AutoSize = false,
-                Size = new Size(SidebarWidth, 22),
+                Size = new Size(SidebarWidth, 24),
                 Dock = DockStyle.Top,
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -276,7 +349,12 @@ namespace MazizTool
 
         private void AddSep()
         {
-            var sep = new Panel { Height = 1, Dock = DockStyle.Top, BackColor = Theme.Border };
+            var sep = new Panel { Height = 1, Dock = DockStyle.Top, BackColor = Color.Transparent };
+            sep.Paint += (s, e) =>
+            {
+                using (var pen = new Pen(Theme.Border, 1))
+                    e.Graphics.DrawLine(pen, 16, 0, SidebarWidth - 16, 0);
+            };
             sidebarPanel.Controls.Add(sep);
         }
 
@@ -286,7 +364,7 @@ namespace MazizTool
             {
                 Label = label,
                 Icon = icon,
-                Size = new Size(SidebarWidth - 16, 32),
+                Size = new Size(SidebarWidth - 16, 36),
                 Dock = DockStyle.Top,
                 Margin = new Padding(8, 2, 8, 2),
                 Tag = tag
@@ -301,8 +379,8 @@ namespace MazizTool
             contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Theme.Background,
-                Padding = new Padding(20)
+                BackColor = Color.Transparent,
+                Padding = new Padding(24)
             };
             Controls.Add(contentPanel);
             contentPanel.BringToFront();
@@ -334,6 +412,8 @@ namespace MazizTool
                 MessageBox.Show("Navigate error: " + ex.Message, "MazizTool");
             }
             StatusText = feature;
+            var titleLbl = headerPanel.Controls.Find("moduleTitle", false).FirstOrDefault() as Label;
+            if (titleLbl != null) titleLbl.Text = feature;
         }
 
         private string StatusText
@@ -351,7 +431,7 @@ namespace MazizTool
             {
                 var proc = Process.GetCurrentProcess();
                 var lbl = headerPanel.Controls.Find("statusText", false).FirstOrDefault() as Label;
-                if (lbl != null && !lbl.Text.StartsWith("> "))
+                if (lbl != null)
                     lbl.Text = $"mem:{proc.WorkingSet64 / 1024 / 1024}MB · procs:{Process.GetProcesses().Length}";
             }
             catch { }
@@ -383,25 +463,7 @@ namespace MazizTool
 
         private Panel FeaturePanel(string title, string subtitle = "")
         {
-            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, AutoScroll = true, Padding = new Padding(4) };
-            var title_ = new Label
-            {
-                Text = title,
-                Font = Theme.HeaderFont,
-                ForeColor = Theme.TextPrimary,
-                AutoSize = true,
-                Location = new Point(4, 4)
-            };
-            var sub = new Label
-            {
-                Text = subtitle,
-                Font = new Font("Segoe UI", 8.5f),
-                ForeColor = Theme.TextMuted,
-                AutoSize = true,
-                Location = new Point(4, 28)
-            };
-            p.Controls.Add(title_);
-            p.Controls.Add(sub);
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, AutoScroll = true, Padding = new Padding(4) };
             return p;
         }
 

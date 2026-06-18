@@ -33,7 +33,7 @@ namespace MazizTool.Controls
             _animTimer.Tick += AnimateTick;
             _rippleTimer = new Timer { Interval = 16 };
             _rippleTimer.Tick += RippleTick;
-            Theme.ThemeChanged += () => { AccentColor = Theme.Accent; Invalidate(); };
+            Theme.ThemeChanged += () => { if (AccentColor != Theme.Danger && AccentColor != Theme.Warning && AccentColor != Theme.Info && AccentColor != Theme.Emerald && AccentColor != Theme.Success) AccentColor = Theme.Accent; Invalidate(); };
         }
 
         protected override void OnMouseEnter(EventArgs e)
@@ -70,7 +70,7 @@ namespace MazizTool.Controls
         private void AnimateTick(object sender, EventArgs e)
         {
             bool changed = false;
-            if (Math.Abs(_hoverT - _targetHover) > 0.003f) { _hoverT += (_targetHover - _hoverT) * 0.2f; changed = true; }
+            if (Math.Abs(_hoverT - _targetHover) > 0.003f) { _hoverT += (_targetHover - _hoverT) * 0.18f; changed = true; }
             if (Math.Abs(_pressT - _targetPress) > 0.003f) { _pressT += (_targetPress - _pressT) * 0.25f; changed = true; }
             if (changed) Invalidate();
             else { _hoverT = _targetHover; _pressT = _targetPress; _animTimer.Stop(); Invalidate(); }
@@ -97,10 +97,17 @@ namespace MazizTool.Controls
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            int liftY = (int)(_hoverT * 1.5f - _pressT * 1f);
+            var rect = new Rectangle(0, liftY, Width - 1, Height - 1 - liftY);
 
-            var bgColor = LerpColor(AccentColor, Lighten(AccentColor, 30), _hoverT);
-            bgColor = LerpColor(bgColor, Darken(AccentColor, 20), _pressT * 0.5f);
+            if (_hoverT > 0.01f)
+            {
+                int depth = (int)(ElevationDepth * _hoverT);
+                GraphicsExt.DrawShadow(g, rect, Radius, depth, 50);
+            }
+
+            var bgColor = Anim.LerpColor(AccentColor, GraphicsExt.Lighten(AccentColor, 25), _hoverT);
+            bgColor = Anim.LerpColor(bgColor, GraphicsExt.Darken(AccentColor, 20), _pressT * 0.5f);
 
             using (var path = GraphicsExt.RoundedRect(rect, Radius))
             using (var brush = new SolidBrush(bgColor))
@@ -116,7 +123,7 @@ namespace MazizTool.Controls
                         float t = (float)ripple.Age / ripple.Life;
                         int maxR = (int)Math.Sqrt(Width * Width + Height * Height);
                         int radius = (int)(maxR * (1f - (1f - t) * (1f - t)));
-                        int alpha = (int)(100 * (1f - t));
+                        int alpha = (int)(90 * (1f - t));
                         using (var brush = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
                             g.FillEllipse(brush, ripple.Origin.X - radius, ripple.Origin.Y - radius, radius * 2, radius * 2);
                     }
@@ -129,26 +136,10 @@ namespace MazizTool.Controls
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
 
-        private Color LerpColor(Color a, Color b, float t)
-        {
-            if (t <= 0) return a;
-            if (t >= 1) return b;
-            return Color.FromArgb(
-                (int)(a.R + (b.R - a.R) * t),
-                (int)(a.G + (b.G - a.G) * t),
-                (int)(a.B + (b.B - a.B) * t));
-        }
-
-        private Color Lighten(Color c, int amount) => Color.FromArgb(
-            Math.Min(255, c.R + amount), Math.Min(255, c.G + amount), Math.Min(255, c.B + amount));
-
-        private Color Darken(Color c, int amount) => Color.FromArgb(
-            Math.Max(0, c.R - amount), Math.Max(0, c.G - amount), Math.Max(0, c.B - amount));
-
         private Color CalcTextColor(Color bg)
         {
             double brightness = (bg.R * 0.299 + bg.G * 0.587 + bg.B * 0.114) / 255.0;
-            return brightness > 0.55 ? Color.FromArgb(10, 14, 12) : Color.White;
+            return brightness > 0.55 ? Color.FromArgb(10, 14, 16) : Color.White;
         }
 
         protected override void Dispose(bool disposing)
@@ -169,6 +160,7 @@ namespace MazizTool.Controls
         public int Radius { get; set; } = 10;
         public int Elevation { get; set; } = 3;
         public Color CardColor { get; set; } = Theme.Surface;
+        public bool HasBorder { get; set; } = true;
 
         public MaterialCard()
         {
@@ -183,9 +175,16 @@ namespace MazizTool.Controls
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            GraphicsExt.DrawShadow(g, rect, Radius, Elevation, 30);
             using (var path = GraphicsExt.RoundedRect(rect, Radius))
             using (var brush = new SolidBrush(CardColor))
                 g.FillPath(brush, path);
+            if (HasBorder)
+            {
+                using (var path2 = GraphicsExt.RoundedRect(rect, Radius))
+                using (var pen = new Pen(Theme.Border, 1))
+                    g.DrawPath(pen, path2);
+            }
         }
     }
 }

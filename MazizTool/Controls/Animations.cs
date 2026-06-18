@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -16,15 +15,15 @@ namespace MazizTool.Controls
             return 1 + c3 * (float)Math.Pow(t - 1, 3) + c1 * (float)Math.Pow(t - 1, 2);
         }
         public static float Lerp(float a, float b, float t) => a + (b - a) * t;
-        public static int Lerp(int a, int b, float t) => (int)(a + (b - a) * t);
 
         public static Color LerpColor(Color a, Color b, float t)
         {
+            if (t <= 0) return a;
+            if (t >= 1) return b;
             return Color.FromArgb(
-                Lerp(a.A, b.A, t),
-                Lerp(a.R, b.R, t),
-                Lerp(a.G, b.G, t),
-                Lerp(a.B, b.B, t));
+                (int)(a.R + (b.R - a.R) * t),
+                (int)(a.G + (b.G - a.G) * t),
+                (int)(a.B + (b.B - a.B) * t));
         }
     }
 
@@ -35,9 +34,6 @@ namespace MazizTool.Controls
         private int _totalFrames;
         private Action<float> _onUpdate;
         private Action _onComplete;
-        public bool IsRunning => _timer?.Enabled == true;
-
-        public AnimTimer() { }
 
         public void Start(int durationMs, Action<float> onUpdate, Action onComplete = null)
         {
@@ -52,7 +48,7 @@ namespace MazizTool.Controls
             {
                 _frame++;
                 float t = (float)_frame / _totalFrames;
-                if (t >= 1f) { t = 1f; Stop(); _onUpdate?.Invoke(t); _onComplete?.Invoke(); return; }
+                if (t >= 1f) { Stop(); _onUpdate?.Invoke(1f); _onComplete?.Invoke(); return; }
                 _onUpdate?.Invoke(t);
             };
             _timer.Start();
@@ -71,6 +67,9 @@ namespace MazizTool.Controls
             var path = new GraphicsPath();
             if (radius <= 0) { path.AddRectangle(rect); return path; }
             int d = radius * 2;
+            if (d > rect.Width) d = rect.Width;
+            if (d > rect.Height) d = rect.Height;
+            radius = d / 2;
             path.AddArc(rect.X, rect.Y, d, d, 180, 90);
             path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
             path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
@@ -79,13 +78,42 @@ namespace MazizTool.Controls
             return path;
         }
 
-        public static void DrawShadow(Graphics g, Rectangle rect, int radius, int depth = 8, Color? color = null)
+        public static GraphicsPath RoundedRect(RectangleF rect, int radius)
         {
-            var c = color ?? Color.FromArgb(0, 0, 0, 70);
+            return RoundedRect(Rectangle.Round(rect), radius);
+        }
+
+        public static void FillRoundedRect(Graphics g, Rectangle rect, int radius, Color color)
+        {
+            using (var path = RoundedRect(rect, radius))
+            using (var brush = new SolidBrush(color))
+                g.FillPath(brush, path);
+        }
+
+        public static void DrawRoundedRect(Graphics g, Rectangle rect, int radius, Color color, float width = 1f)
+        {
+            using (var path = RoundedRect(rect, radius))
+            using (var pen = new Pen(color, width))
+                g.DrawPath(pen, path);
+        }
+
+        public static void DrawGradientBg(Graphics g, Rectangle rect, Color top, Color bottom)
+        {
+            using (var brush = new LinearGradientBrush(
+                new Point(rect.X, rect.Y),
+                new Point(rect.X, rect.Bottom),
+                top, bottom))
+            {
+                g.FillRectangle(brush, rect);
+            }
+        }
+
+        public static void DrawShadow(Graphics g, Rectangle rect, int radius, int depth = 6, int alpha = 60)
+        {
             for (int i = depth; i > 0; i--)
             {
-                int alpha = (int)(c.A * (1f - (float)i / depth) * 0.35f);
-                using (var pen = new Pen(Color.FromArgb(alpha, 0, 0, 0), 1))
+                int a = (int)(alpha * (1f - (float)i / depth) * 0.4f);
+                using (var pen = new Pen(Color.FromArgb(a, 0, 0, 0), 1))
                 {
                     var r = Rectangle.Inflate(rect, i, i);
                     using (var path = RoundedRect(r, radius + i))
@@ -93,5 +121,11 @@ namespace MazizTool.Controls
                 }
             }
         }
+
+        public static Color Lighten(Color c, int amount) => Color.FromArgb(
+            Math.Min(255, c.R + amount), Math.Min(255, c.G + amount), Math.Min(255, c.B + amount));
+
+        public static Color Darken(Color c, int amount) => Color.FromArgb(
+            Math.Max(0, c.R - amount), Math.Max(0, c.G - amount), Math.Max(0, c.B - amount));
     }
 }

@@ -15,10 +15,11 @@ namespace MazizTool
 
     public static class Theme
     {
-        public static Color Background = Color.FromArgb(10, 14, 12);
-        public static Color Surface = Color.FromArgb(16, 24, 20);
-        public static Color SurfaceLight = Color.FromArgb(24, 38, 32);
-        public static Color SurfaceElevated = Color.FromArgb(30, 48, 40);
+        public static Color Background = Color.FromArgb(8, 12, 16);
+        public static Color BackgroundTop = Color.FromArgb(12, 20, 26);
+        public static Color Surface = Color.FromArgb(16, 22, 28);
+        public static Color SurfaceLight = Color.FromArgb(22, 30, 38);
+        public static Color SurfaceElevated = Color.FromArgb(28, 38, 48);
 
         public static Color Accent = Color.FromArgb(45, 212, 191);
         public static Color AccentHover = Color.FromArgb(94, 234, 212);
@@ -31,12 +32,12 @@ namespace MazizTool
         public static Color Success = Color.FromArgb(34, 197, 94);
         public static Color Emerald = Color.FromArgb(16, 185, 129);
 
-        public static Color TextPrimary = Color.FromArgb(230, 247, 244);
-        public static Color TextSecondary = Color.FromArgb(148, 184, 168);
-        public static Color TextMuted = Color.FromArgb(100, 130, 116);
-        public static Color Border = Color.FromArgb(30, 58, 52);
-        public static Color BorderLight = Color.FromArgb(48, 78, 72);
-        public static Color InputBg = Color.FromArgb(10, 22, 18);
+        public static Color TextPrimary = Color.FromArgb(236, 244, 248);
+        public static Color TextSecondary = Color.FromArgb(156, 178, 192);
+        public static Color TextMuted = Color.FromArgb(96, 116, 130);
+        public static Color Border = Color.FromArgb(28, 38, 48);
+        public static Color BorderLight = Color.FromArgb(48, 64, 80);
+        public static Color InputBg = Color.FromArgb(12, 18, 24);
 
         public static Font UIFont = new Font("Segoe UI", 9f, FontStyle.Regular);
         public static Font UIFontBold = new Font("Segoe UI", 9f, FontStyle.Bold);
@@ -82,5 +83,7 @@ namespace MazizTool
             if (index < 0 || index >= Presets.Count) return;
             CurrentPresetIndex = index;
         }
+
+        public static Color WithAlpha(Color c, int a) => Color.FromArgb(a, c);
     }
 }
