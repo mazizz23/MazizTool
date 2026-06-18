@@ -301,38 +301,7 @@ namespace MazizTool
             currentView = null;
             contentPanel.Controls.Clear();
 
-            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, Padding = new Padding(0, 60, 0, 0) };
-
-            var welcomeCard = new Panel
-            {
-                Size = new Size(1130, 70),
-                Dock = DockStyle.Top,
-                BackColor = Theme.Surface,
-                Margin = new Padding(0, 0, 0, 12)
-            };
-            welcomeCard.Paint += (s, e) =>
-            {
-                var g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                var rect = new Rectangle(0, 0, welcomeCard.Width - 1, welcomeCard.Height - 1);
-                var welcomePath = GraphicsExt.RoundedRect(rect, 12);
-                using (var brush = new LinearGradientBrush(rect, Theme.Surface, Theme.SurfaceLight, 0f))
-                    g.FillPath(brush, welcomePath);
-                using (var pen = new Pen(Theme.Border, 1))
-                    g.DrawPath(pen, welcomePath);
-                welcomePath.Dispose();
-                TextRenderer.DrawText(g, "Welcome to MazizTool", new Font("Segoe UI", 13f, FontStyle.Bold),
-                    new Rectangle(20, 12, 400, 24), Theme.TextPrimary, TextFormatFlags.Left);
-                TextRenderer.DrawText(g, "Select a module below or use search to find what you need", new Font("Segoe UI", 9f),
-                    new Rectangle(20, 38, 600, 20), Theme.TextSecondary, TextFormatFlags.Left);
-                var statRect = new Rectangle(welcomeCard.Width - 180, 20, 160, 40);
-                using (var statPath = GraphicsExt.RoundedRect(statRect, 8))
-                using (var statBrush = new SolidBrush(Theme.AccentDarker))
-                    g.FillPath(statBrush, statPath);
-                TextRenderer.DrawText(g, $"{modules.Length} modules", new Font("Segoe UI", 11f, FontStyle.Bold),
-                    statRect, Theme.Accent, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            };
-            p.Controls.Add(welcomeCard);
+            var p = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, Padding = new Padding(0, 20, 0, 0) };
 
             var flowPanel = new FlowLayoutPanel
             {
@@ -341,41 +310,31 @@ namespace MazizTool
                 WrapContents = true,
                 AutoScroll = true,
                 BackColor = Theme.Background,
-                Padding = new Padding(0, 24, 0, 8)
+                Padding = new Padding(16, 24, 16, 8)
             };
 
-            string lastCat = "";
+            int delay = 0;
             foreach (var mod in modules)
             {
                 if (mod.Tag == "About") continue;
-                if (mod.Category != lastCat)
-                {
-                    if (lastCat != "") flowPanel.Controls.Add(SeparatorRow(1130));
-                    var catLabel = new Label
-                    {
-                        Text = mod.Category,
-                        Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                        ForeColor = Theme.Accent,
-                        AutoSize = true,
-                        Margin = new Padding(4, 8, 8, 4),
-                        BackColor = Theme.Background
-                    };
-                    flowPanel.Controls.Add(catLabel);
-                    lastCat = mod.Category;
-                }
                 var card = new FeatureCard
                 {
                     Icon = mod.Icon,
                     Title = mod.Title,
                     Subtitle = mod.Subtitle,
-                    Category = mod.Category,
                     IconBg = mod.Color,
                     Size = new Size(272, 140),
                     Margin = new Padding(8, 8, 8, 8),
-                    Tag = mod.Tag
+                    Tag = mod.Tag,
+                    Visible = false
                 };
                 card.Click += (s, e) => NavigateTo(mod.Tag);
                 flowPanel.Controls.Add(card);
+                var c = card;
+                var timer = new System.Windows.Forms.Timer { Interval = 60 + delay };
+                delay += 40;
+                timer.Tick += (s, e) => { timer.Stop(); timer.Dispose(); if (!c.IsDisposed) c.Visible = true; };
+                timer.Start();
             }
 
             p.Controls.Add(flowPanel);

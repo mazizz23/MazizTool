@@ -104,15 +104,18 @@ namespace MazizTool.Controls
                 new Rectangle(18, 92, Width - 36, 20), Theme.TextSecondary,
                 TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
 
-            var catColor = Anim.LerpColor(Theme.TextMuted, Theme.Accent, _hoverT);
-            var catBg = Anim.LerpColor(Theme.SurfaceLight, Theme.AccentDarker, _hoverT * 0.5f);
-            var catSize = TextRenderer.MeasureText(Category, new Font("Segoe UI", 7.5f, FontStyle.Bold));
-            var catRect = new Rectangle(18, Height - 28, catSize.Width + 16, 18);
-            using (var catPath = GraphicsExt.RoundedRect(catRect, 4))
-            using (var catBrush = new SolidBrush(catBg))
-                g.FillPath(catBrush, catPath);
-            TextRenderer.DrawText(g, Category, new Font("Segoe UI", 7.5f, FontStyle.Bold),
-                catRect, catColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            if (!string.IsNullOrEmpty(Category))
+            {
+                var catColor = Anim.LerpColor(Theme.TextMuted, Theme.Accent, _hoverT);
+                var catBg = Anim.LerpColor(Theme.SurfaceLight, Theme.AccentDarker, _hoverT * 0.5f);
+                var catSize = TextRenderer.MeasureText(Category, new Font("Segoe UI", 7.5f, FontStyle.Bold));
+                var catRect = new Rectangle(18, Height - 28, catSize.Width + 16, 18);
+                using (var catPath = GraphicsExt.RoundedRect(catRect, 4))
+                using (var catBrush = new SolidBrush(catBg))
+                    g.FillPath(catBrush, catPath);
+                TextRenderer.DrawText(g, Category, new Font("Segoe UI", 7.5f, FontStyle.Bold),
+                    catRect, catColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            }
 
             if (_hoverT > 0.3f)
             {
