@@ -109,62 +109,65 @@ namespace MazizTool
                     g.DrawLine(pen, 0, TopBarHeight - 1, topBar.Width, TopBarHeight - 1);
 
                 var logoRect = new Rectangle(SidebarWidth + 20, 12, 32, 32);
-                using (var path = GraphicsExt.RoundedRect(logoRect, 9))
+                var logoPath = GraphicsExt.RoundedRect(logoRect, 9);
                 using (var brush = new LinearGradientBrush(logoRect, Theme.Accent, Theme.AccentDark, 90f))
-                    g.FillPath(brush, path);
+                    g.FillPath(brush, logoPath);
+                logoPath.Dispose();
                 TextRenderer.DrawText(g, "MZ", new Font("Segoe UI", 11f, FontStyle.Bold), logoRect,
                     Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-
-                moduleTitleLabel = new Label
-                {
-                    Text = "Dashboard",
-                    Font = new Font("Segoe UI", 15f, FontStyle.Bold),
-                    ForeColor = Theme.TextPrimary,
-                    AutoSize = true,
-                    Location = new Point(SidebarWidth + 64, 10),
-                    Name = "moduleTitle"
-                };
-                moduleSubLabel = new Label
-                {
-                    Text = "system overview",
-                    Font = new Font("Segoe UI", 8.5f),
-                    ForeColor = Theme.TextMuted,
-                    AutoSize = true,
-                    Location = new Point(SidebarWidth + 64, 33),
-                    Name = "moduleSub"
-                };
-
-                var themeBtn = new Panel
-                {
-                    Size = new Size(40, 32),
-                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                    Location = new Point(topBar.Width - 56, 12),
-                    Cursor = Cursors.Hand,
-                    BackColor = Color.Transparent
-                };
-                themeBtn.Paint += (s, e) =>
-                {
-                    var g = e.Graphics;
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    var swatchRect = new Rectangle(8, 8, 24, 16);
-                    var swatchPath = GraphicsExt.RoundedRect(swatchRect, 4);
-                    using (var brush = new LinearGradientBrush(swatchRect, Theme.Accent, Theme.AccentDark, 0f))
-                        g.FillPath(brush, swatchPath);
-                    using (var pen = new Pen(Theme.BorderLight, 1))
-                        g.DrawPath(pen, swatchPath);
-                    swatchPath.Dispose();
-                    TextRenderer.DrawText(g, "▾", new Font("Segoe UI", 8f),
-                        new Rectangle(28, 0, 12, 32), Theme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                };
-                themeBtn.Click += (s, e) => ToggleThemePopover(themeBtn);
-                themeBtn.Name = "themeBtn";
-                topBar.Resize += (s, e) => { themeBtn.Location = new Point(topBar.Width - 56, 12); };
-
-                topBar.Controls.Add(moduleTitleLabel);
-                topBar.Controls.Add(moduleSubLabel);
-                topBar.Controls.Add(themeBtn);
-                Controls.Add(topBar);
             };
+
+            moduleTitleLabel = new Label
+            {
+                Text = "Dashboard",
+                Font = new Font("Segoe UI", 15f, FontStyle.Bold),
+                ForeColor = Theme.TextPrimary,
+                AutoSize = true,
+                Location = new Point(SidebarWidth + 64, 10),
+                Name = "moduleTitle",
+                BackColor = Color.Transparent
+            };
+            moduleSubLabel = new Label
+            {
+                Text = "system overview",
+                Font = new Font("Segoe UI", 8.5f),
+                ForeColor = Theme.TextMuted,
+                AutoSize = true,
+                Location = new Point(SidebarWidth + 64, 33),
+                Name = "moduleSub",
+                BackColor = Color.Transparent
+            };
+
+            var themeBtn = new Panel
+            {
+                Size = new Size(40, 32),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Location = new Point(topBar.Width - 56, 12),
+                Cursor = Cursors.Hand,
+                BackColor = Color.Transparent
+            };
+            themeBtn.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                var swatchRect = new Rectangle(8, 8, 24, 16);
+                var swatchPath = GraphicsExt.RoundedRect(swatchRect, 4);
+                using (var brush = new LinearGradientBrush(swatchRect, Theme.Accent, Theme.AccentDark, 0f))
+                    g.FillPath(brush, swatchPath);
+                using (var pen = new Pen(Theme.BorderLight, 1))
+                    g.DrawPath(pen, swatchPath);
+                swatchPath.Dispose();
+                TextRenderer.DrawText(g, "▾", new Font("Segoe UI", 8f),
+                    new Rectangle(28, 0, 12, 32), Theme.TextMuted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            themeBtn.Click += (s, e) => ToggleThemePopover(themeBtn);
+            themeBtn.Name = "themeBtn";
+            topBar.Resize += (s, e) => { themeBtn.Location = new Point(topBar.Width - 56, 12); };
+
+            topBar.Controls.Add(moduleTitleLabel);
+            topBar.Controls.Add(moduleSubLabel);
+            topBar.Controls.Add(themeBtn);
+            Controls.Add(topBar);
         }
 
         private void ToggleThemePopover(Control anchor)
