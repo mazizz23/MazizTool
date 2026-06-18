@@ -32,7 +32,6 @@ namespace MazizTool
         private System.Windows.Forms.Timer statusTimer;
         private AnimTimer fadeAnim;
         private float contentOpacity = 1f;
-        private bool isNavigating;
 
         private const int SidebarWidth = 210;
         private const int HeaderHeight = 56;
@@ -199,7 +198,65 @@ namespace MazizTool
             AddNav("CMD", "›_", "CMD");
             AddNav("PowerShell", "PS", "PowerShell");
 
+            AddColorPicker();
+
             Controls.Add(sidebarPanel);
+        }
+
+        private void AddColorPicker()
+        {
+            var colorPanel = new Panel
+            {
+                Height = 36,
+                Dock = DockStyle.Bottom,
+                BackColor = Theme.Surface,
+                Padding = new Padding(8, 8, 8, 4)
+            };
+            var colorTitle = new Label
+            {
+                Text = "THEME",
+                Font = new Font("Segoe UI", 7f, FontStyle.Bold),
+                ForeColor = Theme.TextMuted,
+                AutoSize = true,
+                Location = new Point(8, 2)
+            };
+            colorPanel.Controls.Add(colorTitle);
+
+            for (int i = 0; i < Theme.Presets.Count; i++)
+            {
+                var preset = Theme.Presets[i];
+                var idx = i;
+                var dot = new Panel
+                {
+                    Size = new Size(16, 16),
+                    Location = new Point(8 + i * 19, 18),
+                    BackColor = preset.Accent,
+                    Cursor = Cursors.Hand
+                };
+                dot.Paint += (s, e) =>
+                {
+                    var g = e.Graphics;
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    using (var path = GraphicsExt.RoundedRect(new Rectangle(0, 0, 15, 15), 4))
+                    using (var brush = new SolidBrush(preset.Accent))
+                        g.FillPath(brush, path);
+                    if (Theme.CurrentPresetIndex == idx)
+                    {
+                        using (var pen = new Pen(Color.White, 2))
+                        using (var path2 = GraphicsExt.RoundedRect(new Rectangle(1, 1, 13, 13), 3))
+                            g.DrawPath(pen, path2);
+                    }
+                };
+                dot.Click += (s, e) =>
+                {
+                    Theme.ApplyPreset(idx);
+                    foreach (Control c in colorPanel.Controls)
+                        if (c is Panel p && p.Size == new Size(16, 16)) p.Invalidate();
+                    Invalidate();
+                };
+                colorPanel.Controls.Add(dot);
+            }
+            sidebarPanel.Controls.Add(colorPanel);
         }
 
         private void AddSection(string text)
@@ -254,15 +311,14 @@ namespace MazizTool
 
         private void NavigateTo(string feature)
         {
-            if (isNavigating) return;
-            if (activeNav != null && navButtons.TryGetValue(feature, out var existing) && existing == activeNav) return;
+            if (activeNav != null && navButtons.TryGetValue(feature, out var existing) && existing == activeNav && currentFeaturePanel != null) return;
 
             if (feature == "Explorer") { LaunchExplorer(); return; }
             if (feature == "CMD") { LaunchCmd(); return; }
             if (feature == "PowerShell") { LaunchPowerShell(); return; }
 
-            isNavigating = true;
-            DeactivateAllNav();
+            foreach (var btn in navButtons.Values) btn.SetActive(false);
+            activeNav = null;
 
             if (navButtons.TryGetValue(feature, out var nb)) { nb.SetActive(true); activeNav = nb; }
 
@@ -277,13 +333,7 @@ namespace MazizTool
             {
                 MessageBox.Show("Navigate error: " + ex.Message, "MazizTool");
             }
-            isNavigating = false;
             StatusText = feature;
-        }
-
-        private void DeactivateAllNav()
-        {
-            if (activeNav != null) { activeNav.SetActive(false); activeNav = null; }
         }
 
         private string StatusText
@@ -363,11 +413,8 @@ namespace MazizTool
                 Location = new Point(x, y),
                 Size = new Size(w, h),
                 AccentColor = accent,
-                HoverColor = Color.FromArgb(Math.Min(255, accent.R + 25), Math.Min(255, accent.G + 25), Math.Min(255, accent.B + 25)),
-                Outline = outline,
-                Filled = !outline,
                 Radius = 8,
-                ElevationDepth = 6
+                ElevationDepth = 4
             };
             return b;
         }
@@ -1504,7 +1551,6 @@ namespace MazizTool
                 ("Reset Network", Theme.Info, () => { SystemTools.ResetNetworkSettings(); Toast("Done.", Theme.Info); }),
                 ("Clear Temp", Theme.Accent, () => { SystemTools.ClearTempFiles(); Toast("Done.", Theme.Accent); }),
                 ("Create Restore Pt", Theme.Emerald, () => { SystemTools.CreateRestorePoint("MazizTool"); Toast("Done.", Theme.Emerald); }),
-                ("SFC /scannow", Theme.Danger, () => SystemTools.RestoreSystemFiles()),
                 ("CHKDSK C: /f /r", Theme.Warning, () => SystemTools.CheckDisk()),
                 ("Safe Mode +Net", Theme.Info, () => { SystemTools.EnableSafeModeNetworking(); Toast("Safe mode enabled. Reboot to enter.", Theme.Info); }),
                 ("Disable Safe Mode", Theme.Accent, () => { SystemTools.DisableSafeMode(); Toast("Done.", Theme.Accent); }),
