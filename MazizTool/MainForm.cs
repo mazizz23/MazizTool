@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -82,6 +83,7 @@ namespace MazizTool
                 statusTimer = new System.Windows.Forms.Timer { Interval = 2000 };
                 statusTimer.Tick += (s, e) => UpdateStatusBar();
                 statusTimer.Start();
+                _ = CheckUpdateAsync();
             }
             catch (Exception ex)
             {
@@ -95,7 +97,7 @@ namespace MazizTool
         {
             Text = "MazizTool";
             Size = new Size(1280, 760);
-            MinimumSize = new Size(960, 600);
+            MinimumSize = new Size(800, 520);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Theme.Background;
             ForeColor = Theme.TextPrimary;
@@ -339,12 +341,28 @@ namespace MazizTool
                 WrapContents = true,
                 AutoScroll = true,
                 BackColor = Theme.Background,
-                Padding = new Padding(0, 80, 0, 8)
+                Padding = new Padding(0, 24, 0, 8)
             };
 
+            string lastCat = "";
             foreach (var mod in modules)
             {
                 if (mod.Tag == "About") continue;
+                if (mod.Category != lastCat)
+                {
+                    if (lastCat != "") flowPanel.Controls.Add(SeparatorRow(1130));
+                    var catLabel = new Label
+                    {
+                        Text = mod.Category,
+                        Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                        ForeColor = Theme.Accent,
+                        AutoSize = true,
+                        Margin = new Padding(4, 8, 8, 4),
+                        BackColor = Theme.Background
+                    };
+                    flowPanel.Controls.Add(catLabel);
+                    lastCat = mod.Category;
+                }
                 var card = new FeatureCard
                 {
                     Icon = mod.Icon,
@@ -486,7 +504,36 @@ namespace MazizTool
             };
         }
 
-        private void Toast(string msg, Color? color = null) => ToastNotif.Show(this, msg, color ?? Theme.Accent);
+        private void Toast(string msg, Color? color = null, int duration = 2500) => ToastNotif.Show(this, msg, color ?? Theme.Accent, duration);
+
+        private void SaveLog(string title, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content)) { Toast("Nothing to save."); return; }
+            using (var sfd = new SaveFileDialog { Filter = "Text files|*.txt|Log files|*.log|All|*.*", FileName = title + ".txt" })
+            {
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    File.WriteAllText(sfd.FileName, content);
+                    Toast("Log saved: " + Path.GetFileName(sfd.FileName));
+                }
+            }
+        }
+
+        private bool Confirm(string msg)
+        {
+            return MessageBox.Show(msg, "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        }
+
+        private Panel SeparatorRow(int width)
+        {
+            var sep = new Panel { Height = 1, Width = width, BackColor = Theme.Border, Margin = new Padding(0, 4, 0, 4) };
+            sep.Paint += (s, e) =>
+            {
+                using (var pen = new Pen(Theme.Border, 1))
+                    e.Graphics.DrawLine(pen, 0, 0, sep.Width, 0);
+            };
+            return sep;
+        }
 
         private Form CreateOutputForm(string title)
         {
@@ -628,15 +675,26 @@ namespace MazizTool
         private void ShowTextInPanel(Panel panel, int y, string text)
         {
             foreach (var c in panel.Controls.OfType<TextBox>().ToList()) { panel.Controls.Remove(c); c.Dispose(); }
+            foreach (var c in panel.Controls.OfType<Button>().ToList()) if (c.Text.Contains("Log")) { panel.Controls.Remove(c); c.Dispose(); }
             var box = new TextBox
             {
                 Multiline = true, ReadOnly = true, BackColor = Color.FromArgb(6, 10, 12),
                 ForeColor = Theme.Accent, Font = new Font("Cascadia Code", 9f), BorderStyle = BorderStyle.None,
-                Location = new Point(8, y), Size = new Size(panel.Width - 32, panel.Height - y - 16),
+                Location = new Point(8, y + 36), Size = new Size(panel.Width - 48, panel.Height - y - 48),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
                 ScrollBars = ScrollBars.Both, WordWrap = false, Text = text
             };
             panel.Controls.Add(box);
+            var saveBtn = new Button
+            {
+                Text = "Save Log", FlatStyle = FlatStyle.Flat, BackColor = Theme.Surface,
+                ForeColor = Theme.Accent, Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                Size = new Size(90, 28), Location = new Point(8, y + 4), Cursor = Cursors.Hand
+            };
+            saveBtn.FlatAppearance.BorderSize = 1;
+            saveBtn.FlatAppearance.BorderColor = Theme.Border;
+            saveBtn.Click += (s, e) => SaveLog("output", text);
+            panel.Controls.Add(saveBtn);
             box.BringToFront();
         }
 
@@ -708,6 +766,7 @@ namespace MazizTool
             };
             void Act(Func<string, bool> a, string verb)
             {
+                if (verb == "Delete" && !Confirm("Delete selected services?")) return;
                 foreach (ListViewItem it in grid.SelectedItems)
                     if (it.Tag is ServiceScanner.ServiceInfo svc) a(svc.Name);
                 Toast(verb + " executed.");
@@ -768,17 +827,16 @@ namespace MazizTool
                 using (var ofd = new OpenFileDialog { Filter = "Executables|*.exe;*.dll;*.sys;*.scr|All|*.*" })
                     if (ofd.ShowDialog() == DialogResult.OK) pathInput.Text = ofd.FileName;
             };
-            var analyze = Btn("Analyze", Theme.Accent, 524, 14, 140, 32);
-            c.Controls.Add(pathInput); c.Controls.Add(analyze);
-            p.Controls.Add(c);
-            y += 72;
             var result = new TextBox
             {
-                Location = new Point(8, y), Size = new Size(1130, 400),
+                Location = new Point(8, y + 72), Size = new Size(1130, 400),
                 Multiline = true, ReadOnly = true, BackColor = Color.FromArgb(6, 10, 12),
                 ForeColor = Theme.Accent, Font = new Font("Cascadia Code", 9f), BorderStyle = BorderStyle.None,
                 ScrollBars = ScrollBars.Both, WordWrap = false
             };
+            var analyze = Btn("Analyze", Theme.Accent, 524, 14, 140, 32);
+            var saveFile = Btn("Save Log", Theme.Accent, 672, 14, 100, 32);
+            saveFile.Click += (s, e) => SaveLog(Path.GetFileName(pathInput.Text), result.Text);
             analyze.Click += (s, e) =>
             {
                 if (string.IsNullOrWhiteSpace(pathInput.Text) || !File.Exists(pathInput.Text)) { Toast("Pick a valid file."); return; }
@@ -790,6 +848,8 @@ namespace MazizTool
                     BeginInvokeIfCreated(() => result.Text = report);
                 });
             };
+            c.Controls.Add(pathInput); c.Controls.Add(analyze); c.Controls.Add(saveFile);
+            p.Controls.Add(c);
             p.Controls.Add(result);
         }
 
@@ -813,7 +873,7 @@ namespace MazizTool
                     if (it.Tag is ProcessKiller.ProcessInfo pi) ProcessKiller.KillProcess(pi.Id);
                 RefreshTaskList(lv);
             };
-            killSys.Click += (s, e) => { ProcessKiller.KillNonSystemProcesses(); RefreshTaskList(lv); };
+            killSys.Click += (s, e) => { if (Confirm("Kill all non-system processes?")) { ProcessKiller.KillNonSystemProcesses(); RefreshTaskList(lv); } };
             p.Controls.Add(lv);
             RefreshTaskList(lv);
         }
@@ -1237,18 +1297,18 @@ namespace MazizTool
                 ("Reset Network", Theme.Accent, () => { SystemTools.ResetNetworkSettings(); Toast("Done."); }),
                 ("Clear Temp Files", Theme.Accent, () => { SystemTools.ClearTempFiles(); Toast("Done."); }),
                 ("Create Restore Pt", Theme.Accent, () => { SystemTools.CreateRestorePoint("MazizTool"); Toast("Done."); }),
-                ("CHKDSK C: /f /r", Theme.Warning, () => SystemTools.CheckDisk()),
-                ("Safe Mode +Net", Theme.Accent, () => { SystemTools.EnableSafeModeNetworking(); Toast("Safe mode enabled."); }),
-                ("Disable Safe Mode", Theme.Accent, () => { SystemTools.DisableSafeMode(); Toast("Done."); }),
+                ("CHKDSK C: /f /r", Theme.Warning, () => { if (Confirm("Run CHKDSK C: /f /r? (may require reboot)")) SystemTools.CheckDisk(); }),
+                ("Safe Mode +Net", Theme.Accent, () => { if (Confirm("Enable Safe Mode with Networking? (reboot needed)")) { SystemTools.EnableSafeModeNetworking(); Toast("Safe mode enabled."); } }),
+                ("Disable Safe Mode", Theme.Accent, () => { if (Confirm("Disable Safe Mode boot flag?")) { SystemTools.DisableSafeMode(); Toast("Done."); } }),
                 ("Fix Hosts File", Theme.Accent, () => { SystemTools.FixHostsFile(); Toast("Done."); }),
                 ("Show Hidden Files", Theme.Accent, () => { SystemTools.RestoreHiddenFiles(); Toast("Done."); }),
                 ("Rebuild Icon Cache", Theme.Accent, () => { SystemTools.RebuildIconCache(); Toast("Icon cache rebuilt."); }),
-                ("Repair WMI", Theme.Warning, () => { SystemTools.RepairWMI(); Toast("WMI repaired."); }),
-                ("Reset Firewall", Theme.Warning, () => { SystemTools.ResetFirewall(); Toast("Firewall reset."); }),
+                ("Repair WMI", Theme.Warning, () => { if (Confirm("Repair WMI repository?")) { SystemTools.RepairWMI(); Toast("WMI repaired."); } }),
+                ("Reset Firewall", Theme.Warning, () => { if (Confirm("Reset Windows Firewall to defaults?")) { SystemTools.ResetFirewall(); Toast("Firewall reset."); } }),
                 ("Fix COM Reg", Theme.Accent, () => { SystemTools.FixCOMRegistration(); Toast("COM fixed."); }),
                 ("Rebuild Font Cache", Theme.Accent, () => { SystemTools.RebuildFontCache(); Toast("Font cache rebuilt."); }),
                 ("Fix Print Spooler", Theme.Accent, () => { SystemTools.FixPrintSpooler(); Toast("Print spooler fixed."); }),
-                ("Restart Explorer", Theme.Accent, () => { SystemTools.RestoreExplorer(); Toast("Explorer restarted."); }),
+                ("Restart Explorer", Theme.Accent, () => { if (Confirm("Restart Windows Explorer?")) { SystemTools.RestoreExplorer(); Toast("Explorer restarted."); } }),
             };
             int bw = (1130 - 8) / 2;
             for (int i = 0; i < tools.Length; i++)
@@ -1326,6 +1386,30 @@ namespace MazizTool
         private void LaunchExplorer() { try { Process.Start("explorer.exe"); } catch { } }
         private void LaunchCmd() { try { Process.Start(new ProcessStartInfo("cmd.exe") { UseShellExecute = true, Verb = "runas" }); } catch { } }
         private void LaunchPowerShell() { try { Process.Start(new ProcessStartInfo("powershell.exe") { UseShellExecute = true, Verb = "runas" }); } catch { } }
+
+        private async Task CheckUpdateAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                {
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("MazizTool/6.5");
+                    var json = await client.GetStringAsync("https://api.github.com/repos/mazizz23/MazizTool/releases/latest");
+                    var tagLine = json.Split('\n').FirstOrDefault(l => l.Contains("\"tag_name\""));
+                    if (tagLine != null)
+                    {
+                        var latest = tagLine.Split(':')[1].Trim().Trim('"', ',').Trim();
+                        BeginInvokeIfCreated(() =>
+                        {
+                            Toast("Update available: " + latest, Theme.Warning, 4000);
+                            var lbl = bottomBar.Controls.Find("memLabel", false).FirstOrDefault() as Label;
+                            if (lbl != null) lbl.Text = "update: " + latest;
+                        });
+                    }
+                }
+            }
+            catch { }
+        }
 
         private void BeginInvokeIfCreated(Action a)
         {
