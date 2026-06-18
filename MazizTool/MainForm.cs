@@ -31,6 +31,7 @@ namespace MazizTool
         private HijackRemover hijackRemover;
         private System.Windows.Forms.Timer statusTimer;
         private AnimTimer fadeAnim;
+        private AnimTimer openAnim;
         private float contentOpacity = 1f;
         private bool isNavigating;
 
@@ -58,8 +59,11 @@ namespace MazizTool
             statusTimer.Tick += (s, e) => UpdateStatusBar();
             statusTimer.Start();
             Opacity = 0;
-            var openAnim = new AnimTimer();
-            openAnim.Start(380, t => { Opacity = Anim.Lerp(0f, 1f, Anim.EaseOut(t)); }, () => Opacity = 1);
+            openAnim = new AnimTimer();
+            openAnim.Start(400, t => { Opacity = Anim.Lerp(0f, 1f, Anim.EaseOut(t)); }, () => { Opacity = 1; openAnim = null; });
+            var safety = new System.Windows.Forms.Timer { Interval = 2000 };
+            safety.Tick += (s, e) => { if (Opacity < 1f) Opacity = 1f; safety.Stop(); safety.Dispose(); };
+            safety.Start();
         }
 
         private void InitializeForm()

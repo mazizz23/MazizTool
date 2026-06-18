@@ -31,39 +31,53 @@ namespace MazizTool.Controls
             Height = 34;
             _animTimer = new Timer { Interval = 16 };
             _animTimer.Tick += Animate;
-            _animTimer.Start();
         }
 
         public void SetActive(bool active)
         {
             _targetActive = active ? 1f : 0f;
             IsActive = active;
+            StartAnim();
         }
 
         protected override void OnMouseEnter(EventArgs e)
         {
             base.OnMouseEnter(e);
             _targetHover = 1f;
+            StartAnim();
         }
 
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
             _targetHover = 0f;
+            StartAnim();
+        }
+
+        private void StartAnim()
+        {
+            if (!_animTimer.Enabled) _animTimer.Start();
         }
 
         private void Animate(object sender, EventArgs e)
         {
             bool changed = false;
-            if (Math.Abs(_hoverT - _targetHover) > 0.003f) { _hoverT += (_targetHover - _hoverT) * 0.3f; changed = true; }
-            if (Math.Abs(_activeT - _targetActive) > 0.003f) { _activeT += (_targetActive - _activeT) * 0.25f; changed = true; }
+            if (Math.Abs(_hoverT - _targetHover) > 0.003f) { _hoverT += (_targetHover - _hoverT) * 0.25f; changed = true; }
+            if (Math.Abs(_activeT - _targetActive) > 0.003f) { _activeT += (_targetActive - _activeT) * 0.2f; changed = true; }
             if (changed) Invalidate();
-            if (!changed && Math.Abs(_hoverT - _targetHover) < 0.001f && Math.Abs(_activeT - _targetActive) < 0.001f)
+            else
             {
                 _hoverT = _targetHover;
                 _activeT = _targetActive;
+                _animTimer.Stop();
                 Invalidate();
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) { _animTimer?.Stop(); _animTimer?.Dispose(); }
+            base.Dispose(disposing);
         }
 
         protected override void OnPaint(PaintEventArgs e)
